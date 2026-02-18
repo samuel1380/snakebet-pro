@@ -9,7 +9,15 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw await res.json();
+        if (!res.ok) {
+            let errorBody;
+            try {
+                errorBody = await res.json();
+            } catch (parseError) {
+                throw new Error(`Erro ${res.status}: ${res.statusText}`);
+            }
+            throw errorBody;
+        }
         return res.json();
     },
 
@@ -19,7 +27,15 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw await res.json();
+        if (!res.ok) {
+            let errorBody;
+            try {
+                errorBody = await res.json();
+            } catch (parseError) {
+                throw new Error(`Erro ${res.status}: ${res.statusText}`);
+            }
+            throw errorBody;
+        }
         return res.json();
     },
 

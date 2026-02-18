@@ -101,7 +101,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
              console.warn("API Unreachable, falling back to LocalStorage mode");
              handleLocalAuth(); 
         } else {
-             setError(err.error || "Erro ao autenticar. Verifique seus dados.");
+             // Try to extract the most meaningful error message
+             const errorMessage = err.error || err.message || err.msg || "Erro ao autenticar. Verifique seus dados.";
+             setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
              setLoading(false);
         }
     }
