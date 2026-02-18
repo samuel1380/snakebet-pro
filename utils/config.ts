@@ -17,7 +17,7 @@ export interface AppConfig {
   };
 }
 
-const CONFIG_KEY = 'snakebet_app_config';
+export const CONFIG_KEY = 'snakebet_app_config';
 
 export const DEFAULT_CONFIG: AppConfig = {
   minDeposit: 20.00,

@@ -3,7 +3,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { User, BetRecord, Difficulty, DIFFICULTY_CONFIG, ITEM_PRICES, TransactionRecord } from '../../types';
 import { Wallet, LogOut, TrendingUp, AlertTriangle, DollarSign, History, ArrowUpRight, ArrowDownLeft, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Skull, Key, CheckCircle, Menu, X, ShoppingBag, Shield, Magnet, Zap, Gift, RefreshCw, Lock, Unlock, Users, Copy, ExternalLink, Sparkles, Flame, Info, ChevronRight, Star, Crown, Clock, Instagram, Trophy, Medal, TrendingDown, Coins, Box, Star as StarIcon, Banknote, Heart, QrCode } from 'lucide-react';
-import { getAppConfig, AppConfig } from '../../utils/config';
+import { getAppConfig, AppConfig, CONFIG_KEY } from '../../utils/config';
 import { PagVivaService } from '../../services/pagviva';
 import { api } from '../../services/api';
 
@@ -87,7 +87,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         setConfig(getAppConfig());
     };
     window.addEventListener('snakebet_config_updated', handleConfigUpdate);
-    return () => window.removeEventListener('snakebet_config_updated', handleConfigUpdate);
+    window.addEventListener('storage', handleConfigUpdate); // Listen for cross-tab updates
+    return () => {
+        window.removeEventListener('snakebet_config_updated', handleConfigUpdate);
+        window.removeEventListener('storage', handleConfigUpdate);
+    };
   }, []);
 
   // --- BONUS LOGIC (STRICT DEPOSIT CHECK) ---
@@ -1523,7 +1527,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                 </div>
                                 <h3 className="font-display font-bold text-2xl text-white">Indique e Ganhe</h3>
                                 <p className="text-gray-400 text-xs mt-2">
-                                    Compartilhe seu link exclusivo e ganhe <strong className="text-neon-green">{config.realRevShare}% de RevShare</strong> sobre as perdas dos seus indicados e <strong className="text-neon-green">R$ {config.cpaValue.toFixed(2)}</strong> pelo primeiro depósito a partir de <strong className="text-neon-green">R$ {config.cpaMinDeposit.toFixed(2)}</strong> (CPA)!
+                                    Compartilhe seu link exclusivo e ganhe <strong className="text-neon-green">{config.fakeRevShare}% de RevShare</strong> sobre as perdas dos seus indicados e <strong className="text-neon-green">R$ {config.cpaValue.toFixed(2)}</strong> pelo primeiro depósito a partir de <strong className="text-neon-green">R$ {config.cpaMinDeposit.toFixed(2)}</strong> (CPA)!
                                 </p>
                             </div>
 
