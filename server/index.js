@@ -517,11 +517,20 @@ app.get('/api/pagviva/status/:id', async (req, res) => {
 });
 
 // Serve Static Frontend (Production)
-app.use(express.static(path.join(__dirname, '../dist')));
+// If dist exists, serve it. If not, just send API status.
+const distPath = path.join(__dirname, '../dist');
+const fs = require('fs');
 
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-});
+if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+    });
+} else {
+    app.get('/', (req, res) => {
+        res.send('SnakeBet API is running. Frontend is hosted separately.');
+    });
+}
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
