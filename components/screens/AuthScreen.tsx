@@ -97,8 +97,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         console.error("Auth Error", err);
         // Fallback to LocalStorage Logic if API fails (e.g. Local Mode)
         // This ensures the user can still test locally without running the backend
-        if (err.message && err.message.includes('Failed to fetch')) {
-             console.warn("API Unreachable, falling back to LocalStorage mode");
+        if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('404') || err.message.includes('502') || err.message.includes('503') || err.message.includes('504'))) {
+             console.warn("API Unreachable or Proxy Error, falling back to LocalStorage mode");
              handleLocalAuth(); 
         } else {
              // Try to extract the most meaningful error message
