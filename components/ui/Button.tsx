@@ -1,0 +1,37 @@
+import React from 'react';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'neon' | 'glass';
+  fullWidth?: boolean;
+}
+
+export const Button: React.FC<ButtonProps> = ({ 
+  children, 
+  variant = 'primary', 
+  fullWidth = false, 
+  className = '',
+  ...props 
+}) => {
+  const baseStyles = "relative overflow-hidden px-6 py-4 rounded-xl font-display font-bold transition-all duration-300 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed tracking-wide flex items-center justify-center gap-2";
+  
+  const variants = {
+    primary: "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border border-blue-400/20",
+    secondary: "bg-white/5 hover:bg-white/10 text-white border border-white/10 backdrop-blur-md",
+    danger: "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]",
+    neon: "bg-[#39ff14] text-black hover:bg-[#5aff3d] shadow-[0_0_25px_rgba(57,255,20,0.4)] border border-[#39ff14]",
+    glass: "glass-panel text-white hover:bg-white/5 border border-white/10"
+  };
+
+  return (
+    <button 
+      className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      {...props}
+    >
+      <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
+      {/* Shine effect overlay for neon/primary buttons */}
+      {(variant === 'neon' || variant === 'primary') && (
+        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0 pointer-events-none" />
+      )}
+    </button>
+  );
+};
