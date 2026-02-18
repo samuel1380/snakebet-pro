@@ -915,71 +915,71 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                                         {/* CPA Value */}
-                                        <div className="flex flex-col h-full">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 min-h-[32px] flex items-end">CPA (Valor)</label>
-                                            <div className="relative group flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold group-focus-within:text-blue-400 transition-colors">R$</span>
+                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/10 hover:border-blue-500/30 transition-all group flex flex-col h-full">
+                                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">CPA (Valor)</label>
+                                            <div className="relative mb-3">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 text-xl font-bold">R$</span>
                                                 <input 
                                                     type="number"
                                                     step="0.01"
                                                     value={config.cpaValue}
                                                     onChange={(e) => setConfig({...config, cpaValue: parseFloat(e.target.value) || 0})}
-                                                    className="w-full bg-[#09090b] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white font-mono text-sm focus:outline-none focus:border-blue-500/50 focus:bg-[#09090b] transition-all"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white font-mono text-2xl font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder-gray-600"
                                                 />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 mt-1.5 ml-1 min-h-[30px]">Valor fixo pago ao afiliado.</p>
+                                            <p className="text-xs text-gray-500 mt-auto">Valor fixo pago ao afiliado.</p>
                                         </div>
 
                                         {/* CPA Min Deposit */}
-                                        <div className="flex flex-col h-full">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 min-h-[32px] flex items-end">Depósito Mínimo CPA</label>
-                                            <div className="relative group flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold group-focus-within:text-blue-400 transition-colors">R$</span>
+                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/10 hover:border-blue-500/30 transition-all group flex flex-col h-full">
+                                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Depósito Mínimo CPA</label>
+                                            <div className="relative mb-3">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 text-xl font-bold">R$</span>
                                                 <input 
                                                     type="number"
                                                     step="0.01"
                                                     value={config.cpaMinDeposit}
                                                     onChange={(e) => setConfig({...config, cpaMinDeposit: parseFloat(e.target.value) || 0})}
-                                                    className="w-full bg-[#09090b] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white font-mono text-sm focus:outline-none focus:border-blue-500/50 focus:bg-[#09090b] transition-all"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white font-mono text-2xl font-bold focus:outline-none focus:border-blue-500/50 transition-all placeholder-gray-600"
                                                 />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 mt-1.5 ml-1 min-h-[30px]">Valor mínimo para ativar o CPA.</p>
+                                            <p className="text-xs text-gray-500 mt-auto">Valor mínimo para ativar o CPA.</p>
                                         </div>
 
                                         {/* Real RevShare */}
-                                        <div className="flex flex-col h-full">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 min-h-[32px] flex items-end">RevShare Real (%)</label>
-                                            <div className="relative group flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500 font-bold group-focus-within:text-green-400 transition-colors">%</span>
+                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/10 hover:border-green-500/30 transition-all group flex flex-col h-full">
+                                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">RevShare Real (%)</label>
+                                            <div className="relative mb-3">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-green-500 text-xl font-bold">%</span>
                                                 <input 
                                                     type="number"
                                                     step="1"
                                                     max="100"
                                                     value={config.realRevShare}
                                                     onChange={(e) => setConfig({...config, realRevShare: parseFloat(e.target.value) || 0})}
-                                                    className="w-full bg-[#09090b] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white font-mono text-sm focus:outline-none focus:border-green-500/50 focus:bg-[#09090b] transition-all"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white font-mono text-2xl font-bold focus:outline-none focus:border-green-500/50 transition-all placeholder-gray-600"
                                                 />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 mt-1.5 ml-1 min-h-[30px]">Porcentagem real paga sobre as perdas.</p>
+                                            <p className="text-xs text-gray-500 mt-auto">Porcentagem real paga sobre as perdas.</p>
                                         </div>
 
                                         {/* Fake RevShare */}
-                                        <div className="flex flex-col h-full">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 min-h-[32px] flex items-end">RevShare Visual (%)</label>
-                                            <div className="relative group flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500 font-bold group-focus-within:text-purple-400 transition-colors">%</span>
+                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/10 hover:border-purple-500/30 transition-all group flex flex-col h-full">
+                                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">RevShare Visual (%)</label>
+                                            <div className="relative mb-3">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500 text-xl font-bold">%</span>
                                                 <input 
                                                     type="number"
                                                     step="1"
                                                     max="100"
                                                     value={config.fakeRevShare}
                                                     onChange={(e) => setConfig({...config, fakeRevShare: parseFloat(e.target.value) || 0})}
-                                                    className="w-full bg-[#09090b] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white font-mono text-sm focus:outline-none focus:border-purple-500/50 focus:bg-[#09090b] transition-all"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white font-mono text-2xl font-bold focus:outline-none focus:border-purple-500/50 transition-all placeholder-gray-600"
                                                 />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 mt-1.5 ml-1 min-h-[30px]">Porcentagem exibida para o usuário.</p>
+                                            <p className="text-xs text-gray-500 mt-auto">Porcentagem exibida para o usuário.</p>
                                         </div>
                                     </div>
                                 </div>
