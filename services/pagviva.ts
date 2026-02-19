@@ -49,11 +49,13 @@ export const PagVivaService = {
           throw new Error('Credenciais PagVIVA não configuradas.');
       }
 
+      const postbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/callback` : 'https://snakebet.pro/api/callback';
+
       const response = await fetch('https://pagviva.com/api/transaction/deposit', {
         method: 'POST',
         headers: PagVivaService.getHeaders(config),
         body: JSON.stringify({
-          postback: 'https://snakebet.pro/api/callback', // Placeholder as we don't have a backend
+          postback: postbackUrl,
           amount: amount,
           debtor_name: user.name,
           email: user.email,

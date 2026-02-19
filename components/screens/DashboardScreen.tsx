@@ -757,10 +757,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   };
 
   const copyReferral = () => {
-      navigator.clipboard.writeText(`https://snakebet.pro/u/${user.username}`);
-      setReferralCopied(true);
-      setTimeout(() => setReferralCopied(false), 2000);
-  };
+        const baseUrl = window.location.origin;
+        navigator.clipboard.writeText(`${baseUrl}/u/${user.username}`);
+        setReferralCopied(true);
+        setTimeout(() => setReferralCopied(false), 2000);
+    };
 
   const copyQrCode = () => {
       if (depositCopyPaste) {
@@ -1565,11 +1566,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                             <div className="bg-black/40 p-4 rounded-xl border border-white/10">
                                 <label className="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Seu Link de Indicação</label>
-                                <div className="flex gap-2">
-                                    <code className="flex-1 bg-black/60 p-3 rounded-lg text-sm text-blue-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap border border-white/5">
-                                        snakebet.pro/u/{user.username}
-                                    </code>
-                                    <button 
+                            <div className="flex gap-2">
+                                <code className="flex-1 bg-black/60 p-3 rounded-lg text-sm text-blue-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap border border-white/5">
+                                    {window.location.host}/u/{user.username}
+                                </code>
+                                <button 
                                         onClick={copyReferral}
                                         className="p-3 bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition-colors"
                                     >
