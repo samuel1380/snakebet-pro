@@ -6,11 +6,13 @@ import { GameScreen } from './components/screens/GameScreen';
 import { GameOverScreen } from './components/screens/GameOverScreen';
 import { AdminScreen } from './components/screens/AdminScreen';
 import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
+import { LoadingScreen } from './components/screens/LoadingScreen';
 import { getAppConfig } from './utils/config';
 import { api } from './services/api';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.AUTH);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
   
   // Game Session State
@@ -31,8 +33,10 @@ const App: React.FC = () => {
     
     if (adminSession === 'true') {
         setCurrentScreen(AppScreen.ADMIN);
+        setIsLoading(false);
     } else if (path === '/admin') {
         setCurrentScreen(AppScreen.ADMIN_LOGIN);
+        setIsLoading(false);
     } else if (token) {
         const tryLocalRestore = () => {
              const lastUser = localStorage.getItem('snakebet_last_user');
@@ -76,6 +80,7 @@ const App: React.FC = () => {
              if (!tryLocalRestore()) {
                  localStorage.removeItem('snakebet_token');
              }
+             setIsLoading(false);
              return;
         }
 
@@ -119,12 +124,20 @@ const App: React.FC = () => {
 
                if (!isAuthError) {
                    console.warn("API Error during session restore, trying local fallback");
-                   if (tryLocalRestore()) return;
+                   if (tryLocalRestore()) {
+                       setIsLoading(false);
+                       return;
+                   }
                }
                
                // If fallback fails or it's an auth error, remove token
                localStorage.removeItem('snakebet_token');
+           })
+           .finally(() => {
+               setIsLoading(false);
            });
+    } else {
+        setIsLoading(false);
     }
 
     if (path.startsWith('/u/')) {
@@ -389,6 +402,10 @@ const App: React.FC = () => {
   };
 
   const renderScreen = () => {
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
+
     switch (currentScreen) {
       case AppScreen.AUTH:
         return <AuthScreen onLogin={handleLogin} />;
