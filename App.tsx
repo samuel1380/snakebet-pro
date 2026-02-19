@@ -34,6 +34,51 @@ const App: React.FC = () => {
     } else if (path === '/admin') {
         setCurrentScreen(AppScreen.ADMIN_LOGIN);
     } else if (token) {
+        const tryLocalRestore = () => {
+             const lastUser = localStorage.getItem('snakebet_last_user');
+             if (lastUser) {
+                 const storedData = localStorage.getItem(`snakebet_data_${lastUser}`);
+                 if (storedData) {
+                     try {
+                         const parsed = JSON.parse(storedData);
+                         const userObj: User = {
+                             username: lastUser,
+                             balance: parsed.balance || 0,
+                             bonusBalance: parsed.bonusBalance || 0,
+                             isVip: parsed.isVip || false,
+                             vipExpiry: parsed.vipExpiry || 0,
+                             dailyBonusClaims: parsed.dailyBonusClaims || 0,
+                             boxTracker: parsed.boxTracker || { count: 0, totalSpent: 0 },
+                             transactions: parsed.transactions || [],
+                             rollover: parsed.rollover || { current: 0, target: 0 },
+                             lastDailyBonus: parsed.lastDailyBonus || 0,
+                             consecutiveFreeClaims: parsed.consecutiveFreeClaims || 0,
+                             totalDeposited: parsed.totalDeposited || 0,
+                             inventory: parsed.inventory || { shields: 0, magnets: 0, extraLives: 0 },
+                             referrals: parsed.referrals || [],
+                             invitedBy: parsed.invitedBy,
+                             affiliateEarnings: parsed.affiliateEarnings || { cpa: 0, revShare: 0 }
+                         };
+                         
+                         setUser(userObj);
+                         setCurrentScreen(AppScreen.DASHBOARD);
+                         return true;
+                     } catch (parseErr) {
+                         console.error("Failed to parse local user data", parseErr);
+                     }
+                 }
+             }
+             return false;
+        };
+
+        // If it's a local token, skip API check entirely
+        if (token.startsWith('local_token_')) {
+             if (!tryLocalRestore()) {
+                 localStorage.removeItem('snakebet_token');
+             }
+             return;
+        }
+
         // Attempt to load user profile from API
         api.getProfile()
            .then(data => {
@@ -60,61 +105,24 @@ const App: React.FC = () => {
                    setUser(userObj);
                    setCurrentScreen(AppScreen.DASHBOARD);
                } else {
-                   // Invalid token or response
-                   localStorage.removeItem('snakebet_token');
+                   // Invalid token or response, but try local fallback just in case before clearing
+                   if (!tryLocalRestore()) {
+                        localStorage.removeItem('snakebet_token');
+                   }
                }
            })
            .catch(err => {
                console.error("Failed to restore session", err);
                
-               // Check if it's a network/connection error (Offline Mode)
-               const isNetworkError = err.message && (
-                   err.message.includes('Failed to fetch') || 
-                   err.message.includes('Network request failed') ||
-                   err.message.includes('502') || 
-                   err.message.includes('503') || 
-                   err.message.includes('504')
-               );
+               // Always try local fallback on error unless explicitly unauthorized
+               const isAuthError = err.status === 401 || err.status === 403;
 
-               if (isNetworkError) {
-                   console.warn("Backend offline during session restore, trying local fallback");
-                   
-                   const lastUser = localStorage.getItem('snakebet_last_user');
-                   if (lastUser) {
-                       const storedData = localStorage.getItem(`snakebet_data_${lastUser}`);
-                       if (storedData) {
-                           try {
-                               const parsed = JSON.parse(storedData);
-                               const userObj: User = {
-                                   username: lastUser,
-                                   balance: parsed.balance || 0,
-                                   bonusBalance: parsed.bonusBalance || 0,
-                                   isVip: parsed.isVip || false,
-                                   vipExpiry: parsed.vipExpiry || 0,
-                                   dailyBonusClaims: parsed.dailyBonusClaims || 0,
-                                   boxTracker: parsed.boxTracker || { count: 0, totalSpent: 0 },
-                                   transactions: parsed.transactions || [],
-                                   rollover: parsed.rollover || { current: 0, target: 0 },
-                                   lastDailyBonus: parsed.lastDailyBonus || 0,
-                                   consecutiveFreeClaims: parsed.consecutiveFreeClaims || 0,
-                                   totalDeposited: parsed.totalDeposited || 0,
-                                   inventory: parsed.inventory || { shields: 0, magnets: 0, extraLives: 0 },
-                                   referrals: parsed.referrals || [],
-                                   invitedBy: parsed.invitedBy,
-                                   affiliateEarnings: parsed.affiliateEarnings || { cpa: 0, revShare: 0 }
-                               };
-                               
-                               setUser(userObj);
-                               setCurrentScreen(AppScreen.DASHBOARD);
-                               return;
-                           } catch (parseErr) {
-                               console.error("Failed to parse local user data", parseErr);
-                           }
-                       }
-                   }
+               if (!isAuthError) {
+                   console.warn("API Error during session restore, trying local fallback");
+                   if (tryLocalRestore()) return;
                }
                
-               // If fallback fails, remove token
+               // If fallback fails or it's an auth error, remove token
                localStorage.removeItem('snakebet_token');
            });
     }
