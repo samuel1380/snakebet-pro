@@ -130,6 +130,56 @@ export const api = {
         return res.json();
     },
 
+    async getAdminUsers() {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+
+        const res = await fetch(`${API_URL}/admin/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async getAdminStats() {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+
+        const res = await fetch(`${API_URL}/admin/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async updateUser(id: number, data: any) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+
+        const res = await fetch(`${API_URL}/admin/users/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async deleteUser(id: number) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+
+        const res = await fetch(`${API_URL}/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
     async createDeposit(amount: number, cpf?: string) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
