@@ -886,13 +886,6 @@ app.post('/api/game/result', async (req, res) => {
     }
 });
 
-res.json({ success: true });
-    } catch (err) {
-    console.error("Confirm Deposit Error", err);
-    res.status(500).json({ error: 'Erro ao confirmar depósito.' });
-}
-});
-
 // ADMIN ROUTES
 app.get('/api/admin/users', async (req, res) => {
     const authHeader = req.headers.authorization;
