@@ -66,7 +66,56 @@ const App: React.FC = () => {
            })
            .catch(err => {
                console.error("Failed to restore session", err);
-               // If API fails, maybe fallback to local if needed, or just stay on Auth
+               
+               // Check if it's a network/connection error (Offline Mode)
+               const isNetworkError = err.message && (
+                   err.message.includes('Failed to fetch') || 
+                   err.message.includes('Network request failed') ||
+                   err.message.includes('502') || 
+                   err.message.includes('503') || 
+                   err.message.includes('504')
+               );
+
+               if (isNetworkError) {
+                   console.warn("Backend offline during session restore, trying local fallback");
+                   
+                   const lastUser = localStorage.getItem('snakebet_last_user');
+                   if (lastUser) {
+                       const storedData = localStorage.getItem(`snakebet_data_${lastUser}`);
+                       if (storedData) {
+                           try {
+                               const parsed = JSON.parse(storedData);
+                               const userObj: User = {
+                                   username: lastUser,
+                                   balance: parsed.balance || 0,
+                                   bonusBalance: parsed.bonusBalance || 0,
+                                   isVip: parsed.isVip || false,
+                                   vipExpiry: parsed.vipExpiry || 0,
+                                   dailyBonusClaims: parsed.dailyBonusClaims || 0,
+                                   boxTracker: parsed.boxTracker || { count: 0, totalSpent: 0 },
+                                   transactions: parsed.transactions || [],
+                                   rollover: parsed.rollover || { current: 0, target: 0 },
+                                   lastDailyBonus: parsed.lastDailyBonus || 0,
+                                   consecutiveFreeClaims: parsed.consecutiveFreeClaims || 0,
+                                   totalDeposited: parsed.totalDeposited || 0,
+                                   inventory: parsed.inventory || { shields: 0, magnets: 0, extraLives: 0 },
+                                   referrals: parsed.referrals || [],
+                                   invitedBy: parsed.invitedBy,
+                                   affiliateEarnings: parsed.affiliateEarnings || { cpa: 0, revShare: 0 }
+                               };
+                               
+                               setUser(userObj);
+                               setCurrentScreen(AppScreen.DASHBOARD);
+                               return;
+                           } catch (parseErr) {
+                               console.error("Failed to parse local user data", parseErr);
+                           }
+                       }
+                   }
+               }
+               
+               // If fallback fails, remove token
+               localStorage.removeItem('snakebet_token');
            });
     }
 
@@ -215,6 +264,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('snakebet_admin_session');
+    localStorage.removeItem('snakebet_token');
     setUser(null);
     setBetHistory([]);
     setCurrentScreen(AppScreen.AUTH);
