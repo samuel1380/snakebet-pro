@@ -28,10 +28,86 @@ const dbConfig = {
 
 let pool;
 
+async function createTables() {
+    try {
+        // Users Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE,
+                phone VARCHAR(20),
+                cpf VARCHAR(14) UNIQUE,
+                invitedBy VARCHAR(255),
+                balance DECIMAL(10, 2) DEFAULT 0.00,
+                bonusBalance DECIMAL(10, 2) DEFAULT 0.00,
+                cpa_earnings DECIMAL(10, 2) DEFAULT 0.00,
+                revshare_earnings DECIMAL(10, 2) DEFAULT 0.00,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Referrals Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referrals (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                referrer_id INT NOT NULL,
+                referred_user_id INT NOT NULL,
+                status VARCHAR(50) DEFAULT 'PENDING',
+                cpa_paid BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (referrer_id) REFERENCES users(id),
+                FOREIGN KEY (referred_user_id) REFERENCES users(id)
+            )
+        `);
+
+        // Transactions Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'PENDING',
+                details JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        `);
+
+        // Settings Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                setting_key VARCHAR(255) NOT NULL UNIQUE,
+                setting_value VARCHAR(255)
+            )
+        `);
+
+        // Insert Default Settings if empty
+        const [settings] = await pool.query('SELECT count(*) as count FROM settings');
+        if (settings[0].count === 0) {
+            await pool.query(`
+                INSERT INTO settings (setting_key, setting_value) VALUES 
+                ('cpa_value', '10'),
+                ('cpa_min_deposit', '20'),
+                ('revshare_real', '20'),
+                ('revshare_fake', '50')
+            `);
+        }
+
+        console.log('Tables created/verified successfully');
+    } catch (err) {
+        console.error('Error creating tables:', err);
+    }
+}
+
 async function initDB() {
     try {
         pool = mysql.createPool(dbConfig);
         console.log('Connected to MySQL/MariaDB');
+        await createTables();
     } catch (err) {
         console.error('Database connection failed:', err);
     }
