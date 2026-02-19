@@ -31,6 +31,9 @@ const App: React.FC = () => {
     // Check for user token
     const token = localStorage.getItem('snakebet_token');
     
+    // Helper to enforce minimum loading time
+    const minLoadingTime = new Promise(resolve => setTimeout(resolve, 2500));
+    
     if (adminSession === 'true') {
         setCurrentScreen(AppScreen.ADMIN);
         setIsLoading(false);
@@ -80,12 +83,13 @@ const App: React.FC = () => {
              if (!tryLocalRestore()) {
                  localStorage.removeItem('snakebet_token');
              }
-             setIsLoading(false);
+             // Wait for delay then stop loading
+             minLoadingTime.then(() => setIsLoading(false));
              return;
         }
 
         // Attempt to load user profile from API
-        api.getProfile()
+        const apiCheck = api.getProfile()
            .then(data => {
                if (data.user) {
                    const apiUser = data.user;
@@ -125,19 +129,22 @@ const App: React.FC = () => {
                if (!isAuthError) {
                    console.warn("API Error during session restore, trying local fallback");
                    if (tryLocalRestore()) {
-                       setIsLoading(false);
                        return;
                    }
                }
                
                // If fallback fails or it's an auth error, remove token
                localStorage.removeItem('snakebet_token');
-           })
-           .finally(() => {
-               setIsLoading(false);
            });
+           
+        // Wait for both API check and min time
+        Promise.all([apiCheck, minLoadingTime]).finally(() => {
+            setIsLoading(false);
+        });
+
     } else {
-        setIsLoading(false);
+        // Even if no token, show splash for a bit
+        minLoadingTime.then(() => setIsLoading(false));
     }
 
     if (path.startsWith('/u/')) {
