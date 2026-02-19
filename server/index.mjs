@@ -97,7 +97,7 @@ async function createTables() {
             CREATE TABLE IF NOT EXISTS settings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 setting_key VARCHAR(255) NOT NULL UNIQUE,
-                setting_value VARCHAR(255)
+                setting_value TEXT
             )
         `);
 
@@ -106,10 +106,12 @@ async function createTables() {
         if (settings[0].count === 0) {
             await pool.query(`
                 INSERT INTO settings (setting_key, setting_value) VALUES 
-                ('cpa_value', '10'),
-                ('cpa_min_deposit', '20'),
-                ('revshare_real', '20'),
-                ('revshare_fake', '50')
+                ('cpaValue', '10'),
+                ('cpaMinDeposit', '20'),
+                ('realRevShare', '20'),
+                ('fakeRevShare', '50'),
+                ('minDeposit', '10'),
+                ('minWithdraw', '50')
             `);
         }
 
@@ -143,7 +145,7 @@ async function query(sql, params) {
 // AUTH: Register
 app.post('/api/auth/register', async (req, res) => {
     const { username, password, email, phone, cpf, invitedBy } = req.body;
-    
+
     try {
         // Check if user exists
         const existing = await query('SELECT * FROM users WHERE username = ? OR email = ? OR cpf = ?', [username, email, cpf]);
@@ -152,7 +154,7 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         // Create user
         const result = await query(
             'INSERT INTO users (username, password, email, phone, cpf, invitedBy, balance, bonusBalance) VALUES (?, ?, ?, ?, ?, ?, 0, 0)',
@@ -200,12 +202,12 @@ app.post('/api/auth/login', async (req, res) => {
 
         const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
 
-        res.json({ 
-            token, 
-            user: { 
-                id: user.id, 
-                username: user.username, 
-                balance: parseFloat(user.balance), 
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                balance: parseFloat(user.balance),
                 bonusBalance: parseFloat(user.bonusBalance),
                 email: user.email,
                 phone: user.phone,
@@ -215,7 +217,7 @@ app.post('/api/auth/login', async (req, res) => {
                     cpa: parseFloat(user.cpa_earnings || 0),
                     revShare: parseFloat(user.revshare_earnings || 0)
                 }
-            } 
+            }
         });
     } catch (err) {
         console.error(err);
@@ -229,13 +231,13 @@ app.get('/api/user/me', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const users = await query('SELECT * FROM users WHERE id = ?', [decoded.id]);
-        
+
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
-        
+
         const user = users[0];
         res.json({
             id: user.id,
@@ -262,14 +264,14 @@ app.post('/api/wallet/sync', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { balance, bonusBalance } = req.body;
-        
+
         // Update user balance
         await query('UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?', [balance, bonusBalance, decoded.id]);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("Wallet Sync Error", err);
@@ -287,13 +289,13 @@ app.post('/api/transaction/create', async (req, res) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { type, amount, status, details } = req.body;
-        
+
         // Log transaction
         await query(
-            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())', 
+            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
             [decoded.id, type, amount, status, JSON.stringify(details || {})]
         );
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("Transaction Create Error", err);
@@ -307,16 +309,16 @@ app.get('/api/affiliates/stats', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        
+
         // Get referrals count
         const referralsCount = await query('SELECT count(*) as count FROM referrals WHERE referrer_id = ?', [decoded.id]);
-        
+
         // Get earnings
         const earnings = await query('SELECT cpa_earnings, revshare_earnings FROM users WHERE id = ?', [decoded.id]);
-        
+
         // Get recent referrals
         const referralsList = await query(
             `SELECT u.username, r.created_at as date, 
@@ -324,10 +326,10 @@ app.get('/api/affiliates/stats', async (req, res) => {
             FROM referrals r 
             JOIN users u ON r.referred_user_id = u.id 
             WHERE r.referrer_id = ? 
-            ORDER BY r.created_at DESC LIMIT 10`, 
+            ORDER BY r.created_at DESC LIMIT 10`,
             [decoded.id]
         );
-        
+
         // Get referral link (just username)
         const userData = await query('SELECT username FROM users WHERE id = ?', [decoded.id]);
 
@@ -350,18 +352,42 @@ app.get('/api/affiliates/stats', async (req, res) => {
     }
 });
 
+app.get('/api/config', async (req, res) => {
+    try {
+        const settings = await query('SELECT * FROM settings');
+        const config = {};
+
+        const publicKeys = ['minDeposit', 'minWithdraw', 'prices', 'cpaValue', 'cpaMinDeposit', 'realRevShare', 'fakeRevShare', 'autoWithdrawEnabled', 'autoWithdrawLimit'];
+
+        settings.forEach(row => {
+            if (publicKeys.includes(row.setting_key)) {
+                try {
+                    config[row.setting_key] = JSON.parse(row.setting_value);
+                } catch (e) {
+                    config[row.setting_key] = row.setting_value;
+                }
+            }
+        });
+
+        res.json(config);
+    } catch (err) {
+        console.error("Public Config Error", err);
+        res.status(500).json({ error: 'Erro ao buscar configurações.' });
+    }
+});
+
 // CONFIG: Get Config
 app.get('/api/admin/config', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    
+
     try {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
         const settings = await query('SELECT * FROM settings');
         const config = {};
-        
+
         settings.forEach(row => {
             try {
                 // Try to parse JSON, if fails use raw string
@@ -370,7 +396,7 @@ app.get('/api/admin/config', async (req, res) => {
                 config[row.setting_key] = row.setting_value;
             }
         });
-        
+
         res.json(config);
     } catch (err) {
         console.error("Get Config Error", err);
@@ -398,7 +424,7 @@ app.post('/api/admin/config', async (req, res) => {
                 await query('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', [key, value, value]);
             }
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("Save Config Error", err);
@@ -410,13 +436,13 @@ app.post('/api/admin/config', async (req, res) => {
 app.post('/api/deposit', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    
+
     const token = authHeader.split(' ')[1];
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { amount, cpf } = req.body;
-        
+
         // Get user details
         const users = await query('SELECT * FROM users WHERE id = ?', [decoded.id]);
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
@@ -431,10 +457,10 @@ app.post('/api/deposit', async (req, res) => {
 
         // Get PagViva Config from DB
         const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
-        
+
         let pagVivaConfig = null;
         if (settings.length > 0) {
-             try {
+            try {
                 pagVivaConfig = JSON.parse(settings[0].setting_value);
             } catch (e) {
                 console.error("Error parsing pagViva settings", e);
@@ -447,7 +473,7 @@ app.post('/api/deposit', async (req, res) => {
 
         // Call PagViva API
         const postbackUrl = `${req.protocol}://${req.get('host')}/api/callback`; // Or from env
-        
+
         const payload = JSON.stringify({
             postback: postbackUrl,
             amount: amount,
@@ -459,7 +485,7 @@ app.post('/api/deposit', async (req, res) => {
         });
 
         const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
-        
+
         const options = {
             hostname: 'pagviva.com',
             path: '/api/transaction/deposit',
@@ -474,11 +500,11 @@ app.post('/api/deposit', async (req, res) => {
 
         const apiRequest = https.request(options, (apiRes) => {
             let data = '';
-            
+
             apiRes.on('data', (chunk) => {
                 data += chunk;
             });
-            
+
             apiRes.on('end', () => {
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
@@ -492,12 +518,12 @@ app.post('/api/deposit', async (req, res) => {
                 }
             });
         });
-        
+
         apiRequest.on('error', (e) => {
             console.error(e);
             res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
         });
-        
+
         apiRequest.write(payload);
         apiRequest.end();
 
@@ -511,7 +537,7 @@ app.post('/api/deposit', async (req, res) => {
 app.get('/api/deposit/status/:id', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    
+
     const token = authHeader.split(' ')[1];
 
     try {
@@ -522,7 +548,7 @@ app.get('/api/deposit/status/:id', async (req, res) => {
         const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
         let pagVivaConfig = null;
         if (settings.length > 0) {
-             try {
+            try {
                 pagVivaConfig = JSON.parse(settings[0].setting_value);
             } catch (e) {
                 console.error("Error parsing pagViva settings", e);
@@ -534,7 +560,7 @@ app.get('/api/deposit/status/:id', async (req, res) => {
         }
 
         const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
-        
+
         const options = {
             hostname: 'pagviva.com',
             path: `/api/transaction/${id}`,
@@ -563,12 +589,12 @@ app.get('/api/deposit/status/:id', async (req, res) => {
                 }
             });
         });
-        
+
         apiRequest.on('error', (e) => {
             console.error(e);
             res.json({ status: 'PENDING' });
         });
-        
+
         apiRequest.end();
 
     } catch (err) {
@@ -581,37 +607,37 @@ app.get('/api/deposit/status/:id', async (req, res) => {
 app.post('/api/deposit/confirm', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    
+
     const token = authHeader.split(' ')[1];
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { txId, amount } = req.body;
-        
+
         // Check if transaction already exists
         const existing = await query('SELECT * FROM transactions WHERE details LIKE ? AND type = "DEPOSIT"', [`%${txId}%`]);
-        
+
         if (existing.length > 0) {
             return res.json({ success: true, message: 'Depósito já processado.' });
         }
 
         // Update User Balance
         await query('UPDATE users SET balance = balance + ?, totalDeposited = totalDeposited + ? WHERE id = ?', [amount, amount, decoded.id]);
-        
+
         // Log Transaction
         await query(
-            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "COMPLETED", ?, NOW())', 
+            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "COMPLETED", ?, NOW())',
             [decoded.id, amount, JSON.stringify({ txId, method: 'PIX' })]
         );
-        
+
         // Check for CPA (First Deposit)
         const user = (await query('SELECT invitedBy, totalDeposited FROM users WHERE id = ?', [decoded.id]))[0];
-        
+
         // Get Settings
         const settingsRows = await query('SELECT * FROM settings');
         const config = {};
         settingsRows.forEach(r => config[r.setting_key] = r.setting_value);
-        
+
         const cpaValue = parseFloat(config.cpaValue || 10);
         const cpaMinDeposit = parseFloat(config.cpaMinDeposit || 20);
 
@@ -621,12 +647,12 @@ app.post('/api/deposit/confirm', async (req, res) => {
             const referrer = (await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]))[0];
             if (referrer) {
                 const referral = (await query('SELECT cpa_paid FROM referrals WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, decoded.id]))[0];
-                
+
                 if (referral && !referral.cpa_paid) {
                     // Pay CPA
                     await query('UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?', [cpaValue, referrer.id]);
                     await query('UPDATE referrals SET cpa_paid = TRUE WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, decoded.id]);
-                    
+
                     // Log for Referrer
                     await query(
                         'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "CPA_REWARD", ?, "COMPLETED", ?, NOW())',
@@ -647,13 +673,13 @@ app.post('/api/deposit/confirm', async (req, res) => {
 app.post('/api/withdraw', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    
+
     const token = authHeader.split(' ')[1];
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { amount, pixKey, pixKeyType } = req.body;
-        
+
         // Check Balance
         const user = (await query('SELECT balance FROM users WHERE id = ?', [decoded.id]))[0];
         if (parseFloat(user.balance) < amount) {
@@ -664,7 +690,7 @@ app.post('/api/withdraw', async (req, res) => {
         const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
         let pagVivaConfig = null;
         if (settings.length > 0) {
-             try {
+            try {
                 pagVivaConfig = JSON.parse(settings[0].setting_value);
             } catch (e) {
                 console.error("Error parsing pagViva settings", e);
@@ -680,7 +706,7 @@ app.post('/api/withdraw', async (req, res) => {
 
         // Call PagViva
         const postbackUrl = `${req.protocol}://${req.get('host')}/api/withdraw-callback`;
-        
+
         const payload = JSON.stringify({
             baasPostbackUrl: postbackUrl,
             amount: amount,
@@ -689,7 +715,7 @@ app.post('/api/withdraw', async (req, res) => {
         });
 
         const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
-        
+
         const options = {
             hostname: 'pagviva.com',
             path: '/api/transaction/payment',
@@ -709,10 +735,10 @@ app.post('/api/withdraw', async (req, res) => {
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
                         const jsonResponse = JSON.parse(data);
-                        
+
                         // Log Transaction
                         await query(
-                            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "WITHDRAW", ?, "PENDING", ?, NOW())', 
+                            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "WITHDRAW", ?, "PENDING", ?, NOW())',
                             [decoded.id, amount, JSON.stringify({ txId: jsonResponse.id, pixKey })]
                         );
 
@@ -729,14 +755,14 @@ app.post('/api/withdraw', async (req, res) => {
                 }
             });
         });
-        
+
         apiRequest.on('error', async (e) => {
             console.error(e);
             // Refund user
             await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
             res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
         });
-        
+
         apiRequest.write(payload);
         apiRequest.end();
 
@@ -752,30 +778,30 @@ app.post('/api/affiliates/claim', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        
+
         const user = (await query('SELECT cpa_earnings, revshare_earnings, balance FROM users WHERE id = ?', [decoded.id]))[0];
-        
+
         const totalEarnings = parseFloat(user.cpa_earnings || 0) + parseFloat(user.revshare_earnings || 0);
-        
+
         if (totalEarnings <= 0) {
             return res.status(400).json({ error: 'Sem saldo de afiliados para resgatar.' });
         }
-        
+
         // Update User: Zero out earnings, add to main balance
         await query(
             'UPDATE users SET balance = balance + ?, cpa_earnings = 0, revshare_earnings = 0 WHERE id = ?',
             [totalEarnings, decoded.id]
         );
-        
+
         // Log Transaction
         await query(
             'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "AFFILIATE_CLAIM", ?, "COMPLETED", ?, NOW())',
             [decoded.id, totalEarnings, JSON.stringify({ source: 'CPA + RevShare' })]
         );
-        
+
         res.json({ success: true, newBalance: parseFloat(user.balance) + totalEarnings, claimedAmount: totalEarnings });
     } catch (err) {
         console.error("Affiliate Claim Error", err);
@@ -789,33 +815,33 @@ app.post('/api/game/result', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { betAmount, winAmount, source } = req.body;
-        
+
         const user = (await query('SELECT * FROM users WHERE id = ?', [decoded.id]))[0];
         if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
         // Update Balance
         let newBalance = parseFloat(user.balance);
         let newBonus = parseFloat(user.bonusBalance);
-        
+
         if (source === 'REAL') {
             newBalance = newBalance - betAmount + winAmount;
         } else {
             newBonus = newBonus - betAmount + winAmount;
         }
-        
+
         await query('UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?', [newBalance, newBonus, decoded.id]);
-        
+
         // Log Transactions
         // BET
         await query(
             'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "BET", ?, "COMPLETED", ?, NOW())',
             [decoded.id, betAmount, JSON.stringify({ source, winAmount })]
         );
-        
+
         // WIN (if any)
         if (winAmount > 0) {
             await query(
@@ -828,10 +854,10 @@ app.post('/api/game/result', async (req, res) => {
             const settings = await query('SELECT * FROM settings');
             const config = {};
             settings.forEach(s => config[s.setting_key] = s.setting_value);
-            
-            const revSharePct = parseFloat(config.revshare_real || 20);
+
+            const revSharePct = parseFloat(config.realRevShare || 20);
             const commission = betAmount * (revSharePct / 100);
-            
+
             if (commission > 0) {
                 const referrer = await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]);
                 if (referrer.length > 0) {
@@ -842,7 +868,7 @@ app.post('/api/game/result', async (req, res) => {
                 }
             }
         }
-        
+
         res.json({ success: true, balance: newBalance, bonusBalance: newBonus });
     } catch (err) {
         console.error("Game Result Error", err);
@@ -859,17 +885,17 @@ app.post('/api/transaction/confirm', async (req, res) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const { txId, amount } = req.body;
-        
+
         // Update transaction status
         // Check if already completed to avoid double CPA
         const existing = await query('SELECT status FROM transactions WHERE details LIKE ?', [`%${txId}%`]);
         if (existing.length > 0 && existing[0].status === 'COMPLETED') {
-             return res.json({ success: true, message: 'Already processed' });
+            return res.json({ success: true, message: 'Already processed' });
         }
 
         // Update User Balance
         await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
-        
+
         // Update Transaction
         // For simplicity, let's insert a COMPLETED DEPOSIT record
         await query(
@@ -879,25 +905,25 @@ app.post('/api/transaction/confirm', async (req, res) => {
 
         // CPA LOGIC
         const user = (await query('SELECT * FROM users WHERE id = ?', [decoded.id]))[0];
-        
+
         // Calculate total deposited (including this one)
         const deposits = await query('SELECT SUM(amount) as total FROM transactions WHERE user_id = ? AND type = "DEPOSIT" AND status = "COMPLETED"', [decoded.id]);
         const totalDeposited = parseFloat(deposits[0].total || 0);
-        
+
         if (user.invitedBy) {
             const settings = await query('SELECT * FROM settings');
             const config = {};
             settings.forEach(s => config[s.setting_key] = s.setting_value);
-            
-            const cpaMin = parseFloat(config.cpa_min_deposit || 20);
-            const cpaValue = parseFloat(config.cpa_value || 10);
-            
+
+            const cpaMin = parseFloat(config.cpaMinDeposit || 20);
+            const cpaValue = parseFloat(config.cpaValue || 10);
+
             // Check if CPA already paid for this user
             const referral = await query(
                 'SELECT * FROM referrals WHERE referred_user_id = ? AND cpa_paid = 1',
                 [decoded.id]
             );
-            
+
             // If not paid yet, and total deposits meet the baseline requirement
             if (referral.length === 0 && totalDeposited >= cpaMin) {
                 const referrer = await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]);
@@ -907,7 +933,7 @@ app.post('/api/transaction/confirm', async (req, res) => {
                         'UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?',
                         [cpaValue, referrer[0].id]
                     );
-                    
+
                     // Update Referral Status
                     await query(
                         'UPDATE referrals SET status = "QUALIFIED", cpa_paid = 1 WHERE referred_user_id = ?',
@@ -916,7 +942,7 @@ app.post('/api/transaction/confirm', async (req, res) => {
                 }
             }
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("Transaction Confirm Error", err);
@@ -934,7 +960,7 @@ app.get('/api/admin/users', async (req, res) => {
         jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
         const users = await query('SELECT * FROM users ORDER BY created_at DESC');
-        
+
         // Enhance users with referral counts
         const enhancedUsers = await Promise.all(users.map(async (u) => {
             const referralCount = await query('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?', [u.id]);
@@ -961,20 +987,15 @@ app.put('/api/admin/users/:id', async (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET || 'secret');
-
-        const { id } = req.params;
-        const { balance, bonusBalance, isVip, vipExpiry, inventory } = req.body;
-
-        await query(
-            'UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?',
-            [balance, bonusBalance, id]
+        'UPDATE users SET balance = ?, bonusBalance = ?, isVip = ?, vipExpiry = ?, inventory = ? WHERE id = ?',
+            [balance, bonusBalance, isVip ? 1 : 0, vipExpiry || null, JSON.stringify(inventory || {}), id]
         );
-        
-        res.json({ success: true });
+
+res.json({ success: true });
     } catch (err) {
-        console.error("Admin Update User Error", err);
-        res.status(500).json({ error: 'Erro ao atualizar usuário' });
-    }
+    console.error("Admin Update User Error", err);
+    res.status(500).json({ error: 'Erro ao atualizar usuário' });
+}
 });
 
 // ADMIN: Delete User
@@ -985,16 +1006,16 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        
+
         const { id } = req.params;
 
         // Delete related records first to maintain integrity
         await query('DELETE FROM referrals WHERE referrer_id = ? OR referred_user_id = ?', [id, id]);
         await query('DELETE FROM transactions WHERE user_id = ?', [id]);
-        
+
         // Delete user
         await query('DELETE FROM users WHERE id = ?', [id]);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("Admin Delete User Error", err);
@@ -1013,7 +1034,7 @@ app.get('/api/admin/stats', async (req, res) => {
         const [totalUsers] = await query('SELECT COUNT(*) as count FROM users');
         const [totalDeposits] = await query('SELECT SUM(amount) as total FROM transactions WHERE type = "DEPOSIT" AND status = "COMPLETED"');
         const [totalWithdrawals] = await query('SELECT SUM(amount) as total FROM transactions WHERE type = "WITHDRAW" AND status = "COMPLETED"');
-        
+
         res.json({
             totalUsers: totalUsers.count,
             totalDeposited: totalDeposits.total || 0,
@@ -1029,14 +1050,14 @@ app.get('/api/admin/stats', async (req, res) => {
 // If dist exists, serve it. If not, just send API status.
 const distPath = path.join(__dirname, '../dist');
 
-if (fs.existsSync(distPath)) {        
-    app.use(express.static(distPath));    
-    app.get('*', (req, res) => {      
+if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
     });
 } else {
     // Fallback for when build is missing
-    app.get('*', (req, res) => {      
+    app.get('*', (req, res) => {
         res.status(200).send(`
             <html>
                 <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #111; color: #fff;">

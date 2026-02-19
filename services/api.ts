@@ -42,7 +42,7 @@ export const api = {
     async getProfile(token?: string) {
         const authToken = token || localStorage.getItem('snakebet_token');
         if (!authToken) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/user/me`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
@@ -56,7 +56,7 @@ export const api = {
 
         const res = await fetch(`${API_URL}/wallet/sync`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -72,7 +72,7 @@ export const api = {
 
         const res = await fetch(`${API_URL}/transaction/create`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -106,7 +106,7 @@ export const api = {
     async getAdminConfig() {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/admin/config`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -117,10 +117,10 @@ export const api = {
     async saveAdminConfig(config: any) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/admin/config`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -133,10 +133,10 @@ export const api = {
     async createDeposit(amount: number, cpf?: string) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/deposit`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -149,13 +149,13 @@ export const api = {
     async checkDepositStatus(txId: string) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) return 'PENDING';
-        
+
         const res = await fetch(`${API_URL}/deposit/status/${txId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (!res.ok) return 'PENDING';
-        
+
         const data = await res.json();
         return (data.status || data.transactionStatus || 'PENDING').toUpperCase();
     },
@@ -163,10 +163,10 @@ export const api = {
     async confirmDeposit(txId: string, amount: number) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/deposit/confirm`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -179,15 +179,21 @@ export const api = {
     async requestWithdraw(amount: number, pixKey: string, pixKeyType: string) {
         const token = localStorage.getItem('snakebet_token');
         if (!token) throw new Error("No token");
-        
+
         const res = await fetch(`${API_URL}/withdraw`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ amount, pixKey, pixKeyType })
         });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async getPublicConfig() {
+        const res = await fetch(`${API_URL}/config`);
         if (!res.ok) throw await res.json();
         return res.json();
     }
