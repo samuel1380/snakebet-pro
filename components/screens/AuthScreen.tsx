@@ -159,7 +159,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
             return;
         }
         // Register new user
-        const newUser = { username, password };
+        const newUser = { 
+            id: Date.now(), // Generate a persistent local ID
+            username, 
+            password 
+        };
         localStorage.setItem(userKey, JSON.stringify(newUser));
         
         // Handle Referral

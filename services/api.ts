@@ -103,31 +103,90 @@ export const api = {
         return res.json();
     },
 
-    async processGameResult(betAmount: number, winAmount: number, source: 'REAL' | 'BONUS') {
+    async getAdminConfig() {
         const token = localStorage.getItem('snakebet_token');
-        if (!token) return;
-        const res = await fetch(`${API_URL}/game/result`, {
+        if (!token) throw new Error("No token");
+        
+        const res = await fetch(`${API_URL}/admin/config`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async saveAdminConfig(config: any) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+        
+        const res = await fetch(`${API_URL}/admin/config`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ betAmount, winAmount, source })
+            body: JSON.stringify(config)
         });
         if (!res.ok) throw await res.json();
         return res.json();
     },
-    
+
+    async createDeposit(amount: number, cpf?: string) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+        
+        const res = await fetch(`${API_URL}/deposit`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount, cpf })
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async checkDepositStatus(txId: string) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) return 'PENDING';
+        
+        const res = await fetch(`${API_URL}/deposit/status/${txId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!res.ok) return 'PENDING';
+        
+        const data = await res.json();
+        return (data.status || data.transactionStatus || 'PENDING').toUpperCase();
+    },
+
     async confirmDeposit(txId: string, amount: number) {
         const token = localStorage.getItem('snakebet_token');
-        if (!token) return;
-        const res = await fetch(`${API_URL}/transaction/confirm`, {
+        if (!token) throw new Error("No token");
+        
+        const res = await fetch(`${API_URL}/deposit/confirm`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ txId, amount })
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async requestWithdraw(amount: number, pixKey: string, pixKeyType: string) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+        
+        const res = await fetch(`${API_URL}/withdraw`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount, pixKey, pixKeyType })
         });
         if (!res.ok) throw await res.json();
         return res.json();

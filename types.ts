@@ -15,6 +15,7 @@ export interface TransactionRecord {
 }
 
 export interface User {
+  id?: number; // Database ID (optional for local/legacy)
   username: string;
   balance: number; // Carteira Real
   bonusBalance: number; // Carteira de Bônus

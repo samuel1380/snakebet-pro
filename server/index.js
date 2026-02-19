@@ -1,10 +1,17 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const mysql = require('mysql2/promise');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const path = require('path');
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import mysql from 'mysql2/promise';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import path from 'path';
+import https from 'https';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,9 +51,18 @@ async function createTables() {
                 bonusBalance DECIMAL(10, 2) DEFAULT 0.00,
                 cpa_earnings DECIMAL(10, 2) DEFAULT 0.00,
                 revshare_earnings DECIMAL(10, 2) DEFAULT 0.00,
+                totalDeposited DECIMAL(10, 2) DEFAULT 0.00,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Check for totalDeposited column (migration)
+        try {
+            await pool.query('SELECT totalDeposited FROM users LIMIT 1');
+        } catch (e) {
+            console.log("Migrating users table: Adding totalDeposited column");
+            await pool.query('ALTER TABLE users ADD COLUMN totalDeposited DECIMAL(10, 2) DEFAULT 0.00');
+        }
 
         // Referrals Table
         await pool.query(`
@@ -117,6 +133,7 @@ initDB();
 
 // Helper: Query DB
 async function query(sql, params) {
+    if (!pool) throw new Error('Database not initialized');
     const [rows] = await pool.execute(sql, params);
     return rows;
 }
@@ -183,8 +200,6 @@ app.post('/api/auth/login', async (req, res) => {
 
         const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
 
-        // Get additional data if needed (e.g. affiliate earnings)
-        // For simplicity, returning basic info
         res.json({ 
             token, 
             user: { 
@@ -299,6 +314,9 @@ app.get('/api/affiliates/stats', async (req, res) => {
         // Get referrals count
         const referralsCount = await query('SELECT count(*) as count FROM referrals WHERE referrer_id = ?', [decoded.id]);
         
+        // Get earnings
+        const earnings = await query('SELECT cpa_earnings, revshare_earnings FROM users WHERE id = ?', [decoded.id]);
+        
         // Get recent referrals
         const referralsList = await query(
             `SELECT u.username, r.created_at as date, 
@@ -309,29 +327,422 @@ app.get('/api/affiliates/stats', async (req, res) => {
             ORDER BY r.created_at DESC LIMIT 10`, 
             [decoded.id]
         );
-
-        // Get earnings
-        const user = await query('SELECT cpa_earnings, revshare_earnings FROM users WHERE id = ?', [decoded.id]);
         
         // Get referral link (just username)
         const userData = await query('SELECT username FROM users WHERE id = ?', [decoded.id]);
 
         res.json({
-            referralCount: referralsCount[0].count,
+            referrals: referralsCount[0].count,
+            earnings: {
+                cpa: parseFloat(earnings[0].cpa_earnings || 0),
+                revShare: parseFloat(earnings[0].revshare_earnings || 0)
+            },
             recentReferrals: referralsList.map(r => ({
                 username: r.username,
                 date: r.date,
                 depositAmount: parseFloat(r.depositAmount || 0)
             })),
-            earnings: {
-                cpa: parseFloat(user[0].cpa_earnings || 0),
-                revShare: parseFloat(user[0].revshare_earnings || 0)
-            },
             referralCode: userData[0].username
         });
     } catch (err) {
         console.error("Affiliate Stats Error", err);
-        res.status(500).json({ error: 'Erro ao buscar dados de afiliados.' });
+        res.status(500).json({ error: 'Erro ao buscar estatísticas de afiliados.' });
+    }
+});
+
+// CONFIG: Get Config
+app.get('/api/admin/config', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    
+    try {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+
+        const settings = await query('SELECT * FROM settings');
+        const config = {};
+        
+        settings.forEach(row => {
+            try {
+                // Try to parse JSON, if fails use raw string
+                config[row.setting_key] = JSON.parse(row.setting_value);
+            } catch (e) {
+                config[row.setting_key] = row.setting_value;
+            }
+        });
+        
+        res.json(config);
+    } catch (err) {
+        console.error("Get Config Error", err);
+        res.status(500).json({ error: 'Erro ao buscar configurações.' });
+    }
+});
+
+// CONFIG: Save Config
+app.post('/api/admin/config', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+
+        const config = req.body;
+        const values = Object.entries(config).map(([key, value]) => {
+            const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            return [key, stringValue];
+        });
+
+        if (values.length > 0) {
+            for (const [key, value] of values) {
+                await query('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', [key, value, value]);
+            }
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Save Config Error", err);
+        res.status(500).json({ error: 'Erro ao salvar configurações.' });
+    }
+});
+
+// DEPOSIT: Create Deposit (Secure)
+app.post('/api/deposit', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const { amount, cpf } = req.body;
+        
+        // Get user details
+        const users = await query('SELECT * FROM users WHERE id = ?', [decoded.id]);
+        if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+        const user = users[0];
+
+        // Update CPF if provided and different
+        let userCpf = user.cpf;
+        if (cpf && cpf !== user.cpf) {
+            await query('UPDATE users SET cpf = ? WHERE id = ?', [cpf, decoded.id]);
+            userCpf = cpf;
+        }
+
+        // Get PagViva Config from DB
+        const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
+        
+        let pagVivaConfig = null;
+        if (settings.length > 0) {
+             try {
+                pagVivaConfig = JSON.parse(settings[0].setting_value);
+            } catch (e) {
+                console.error("Error parsing pagViva settings", e);
+            }
+        }
+
+        if (!pagVivaConfig || !pagVivaConfig.token) {
+            return res.status(500).json({ error: 'Credenciais PagVIVA não configuradas no servidor.' });
+        }
+
+        // Call PagViva API
+        const postbackUrl = `${req.protocol}://${req.get('host')}/api/callback`; // Or from env
+        
+        const payload = JSON.stringify({
+            postback: postbackUrl,
+            amount: amount,
+            debtor_name: user.username, // Using username as name if full name not available
+            email: user.email || 'user@example.com',
+            debtor_document_number: userCpf || '00000000000',
+            phone: user.phone || '00000000000',
+            method_pay: 'pix'
+        });
+
+        const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
+        
+        const options = {
+            hostname: 'pagviva.com',
+            path: '/api/transaction/deposit',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${authString}`,
+                'X-API-KEY': pagVivaConfig.apiKey || ''
+            }
+        };
+
+        const apiRequest = https.request(options, (apiRes) => {
+            let data = '';
+            
+            apiRes.on('data', (chunk) => {
+                data += chunk;
+            });
+            
+            apiRes.on('end', () => {
+                if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+                    try {
+                        const jsonResponse = JSON.parse(data);
+                        res.json(jsonResponse);
+                    } catch (e) {
+                        res.status(500).json({ error: 'Erro ao processar resposta do pagamento.' });
+                    }
+                } else {
+                    res.status(apiRes.statusCode).json({ error: `Erro PagVIVA: ${data}` });
+                }
+            });
+        });
+        
+        apiRequest.on('error', (e) => {
+            console.error(e);
+            res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
+        });
+        
+        apiRequest.write(payload);
+        apiRequest.end();
+
+    } catch (err) {
+        console.error("Deposit Error", err);
+        res.status(500).json({ error: 'Erro ao criar depósito.' });
+    }
+});
+
+// DEPOSIT: Check Status
+app.get('/api/deposit/status/:id', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    
+    const token = authHeader.split(' ')[1];
+
+    try {
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const { id } = req.params;
+
+        // Get PagViva Config
+        const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
+        let pagVivaConfig = null;
+        if (settings.length > 0) {
+             try {
+                pagVivaConfig = JSON.parse(settings[0].setting_value);
+            } catch (e) {
+                console.error("Error parsing pagViva settings", e);
+            }
+        }
+
+        if (!pagVivaConfig || !pagVivaConfig.token) {
+            return res.status(500).json({ error: 'Credenciais PagVIVA não configuradas.' });
+        }
+
+        const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
+        
+        const options = {
+            hostname: 'pagviva.com',
+            path: `/api/transaction/${id}`,
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${authString}`,
+                'X-API-KEY': pagVivaConfig.apiKey || ''
+            }
+        };
+
+        const apiRequest = https.request(options, (apiRes) => {
+            let data = '';
+            apiRes.on('data', (chunk) => data += chunk);
+            apiRes.on('end', () => {
+                if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+                    try {
+                        const jsonResponse = JSON.parse(data);
+                        res.json(jsonResponse);
+                    } catch (e) {
+                        res.status(500).json({ error: 'Erro ao processar resposta.' });
+                    }
+                } else {
+                    res.json({ status: 'PENDING' }); // Default to PENDING on error to avoid breaking flow
+                }
+            });
+        });
+        
+        apiRequest.on('error', (e) => {
+            console.error(e);
+            res.json({ status: 'PENDING' });
+        });
+        
+        apiRequest.end();
+
+    } catch (err) {
+        console.error("Check Status Error", err);
+        res.status(500).json({ error: 'Erro ao verificar status.' });
+    }
+});
+
+// DEPOSIT: Confirm (Update Balance)
+app.post('/api/deposit/confirm', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const { txId, amount } = req.body;
+        
+        // Check if transaction already exists
+        const existing = await query('SELECT * FROM transactions WHERE details LIKE ? AND type = "DEPOSIT"', [`%${txId}%`]);
+        
+        if (existing.length > 0) {
+            return res.json({ success: true, message: 'Depósito já processado.' });
+        }
+
+        // Update User Balance
+        await query('UPDATE users SET balance = balance + ?, totalDeposited = totalDeposited + ? WHERE id = ?', [amount, amount, decoded.id]);
+        
+        // Log Transaction
+        await query(
+            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "COMPLETED", ?, NOW())', 
+            [decoded.id, amount, JSON.stringify({ txId, method: 'PIX' })]
+        );
+        
+        // Check for CPA (First Deposit)
+        const user = (await query('SELECT invitedBy, totalDeposited FROM users WHERE id = ?', [decoded.id]))[0];
+        
+        // Get Settings
+        const settingsRows = await query('SELECT * FROM settings');
+        const config = {};
+        settingsRows.forEach(r => config[r.setting_key] = r.setting_value);
+        
+        const cpaValue = parseFloat(config.cpaValue || 10);
+        const cpaMinDeposit = parseFloat(config.cpaMinDeposit || 20);
+
+        // If user was invited, hasn't triggered CPA yet, and deposit meets criteria
+        if (user.invitedBy && (user.totalDeposited + amount) >= cpaMinDeposit) {
+            // Check if CPA already paid
+            const referrer = (await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]))[0];
+            if (referrer) {
+                const referral = (await query('SELECT cpa_paid FROM referrals WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, decoded.id]))[0];
+                
+                if (referral && !referral.cpa_paid) {
+                    // Pay CPA
+                    await query('UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?', [cpaValue, referrer.id]);
+                    await query('UPDATE referrals SET cpa_paid = TRUE WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, decoded.id]);
+                    
+                    // Log for Referrer
+                    await query(
+                        'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "CPA_REWARD", ?, "COMPLETED", ?, NOW())',
+                        [referrer.id, cpaValue, JSON.stringify({ fromUser: decoded.username })]
+                    );
+                }
+            }
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Confirm Deposit Error", err);
+        res.status(500).json({ error: 'Erro ao confirmar depósito.' });
+    }
+});
+
+// WITHDRAW: Request
+app.post('/api/withdraw', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const { amount, pixKey, pixKeyType } = req.body;
+        
+        // Check Balance
+        const user = (await query('SELECT balance FROM users WHERE id = ?', [decoded.id]))[0];
+        if (parseFloat(user.balance) < amount) {
+            return res.status(400).json({ error: 'Saldo insuficiente.' });
+        }
+
+        // Get PagViva Config
+        const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
+        let pagVivaConfig = null;
+        if (settings.length > 0) {
+             try {
+                pagVivaConfig = JSON.parse(settings[0].setting_value);
+            } catch (e) {
+                console.error("Error parsing pagViva settings", e);
+            }
+        }
+
+        if (!pagVivaConfig || !pagVivaConfig.token) {
+            return res.status(500).json({ error: 'Credenciais de saque não configuradas.' });
+        }
+
+        // Deduct Balance First (Pessimistic Locking ideally, but simple update here)
+        await query('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, decoded.id]);
+
+        // Call PagViva
+        const postbackUrl = `${req.protocol}://${req.get('host')}/api/withdraw-callback`;
+        
+        const payload = JSON.stringify({
+            baasPostbackUrl: postbackUrl,
+            amount: amount,
+            pixKey: pixKey,
+            pixKeyType: pixKeyType || 'cpf'
+        });
+
+        const authString = Buffer.from(`${pagVivaConfig.token}:${pagVivaConfig.secret}`).toString('base64');
+        
+        const options = {
+            hostname: 'pagviva.com',
+            path: '/api/transaction/payment',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${authString}`,
+                'X-API-KEY': pagVivaConfig.apiKey || ''
+            }
+        };
+
+        const apiRequest = https.request(options, (apiRes) => {
+            let data = '';
+            apiRes.on('data', (chunk) => data += chunk);
+            apiRes.on('end', async () => {
+                if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+                    try {
+                        const jsonResponse = JSON.parse(data);
+                        
+                        // Log Transaction
+                        await query(
+                            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "WITHDRAW", ?, "PENDING", ?, NOW())', 
+                            [decoded.id, amount, JSON.stringify({ txId: jsonResponse.id, pixKey })]
+                        );
+
+                        res.json(jsonResponse);
+                    } catch (e) {
+                        // Refund on error? For now, just log
+                        console.error("Withdraw Parse Error", e);
+                        res.status(500).json({ error: 'Erro ao processar resposta do saque.' });
+                    }
+                } else {
+                    // Refund user
+                    await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
+                    res.status(apiRes.statusCode).json({ error: `Erro PagVIVA: ${data}` });
+                }
+            });
+        });
+        
+        apiRequest.on('error', async (e) => {
+            console.error(e);
+            // Refund user
+            await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
+            res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
+        });
+        
+        apiRequest.write(payload);
+        apiRequest.end();
+
+    } catch (err) {
+        console.error("Withdraw Error", err);
+        res.status(500).json({ error: 'Erro ao solicitar saque.' });
     }
 });
 
@@ -428,9 +839,6 @@ app.post('/api/game/result', async (req, res) => {
                         'UPDATE users SET revshare_earnings = revshare_earnings + ? WHERE id = ?',
                         [commission, referrer[0].id]
                     );
-                    
-                    // Log for Referrer (Optional, or just update balance)
-                    // We might want a separate table for affiliate logs, but for now just updating the field is enough as per request
                 }
             }
         }
@@ -463,10 +871,6 @@ app.post('/api/transaction/confirm', async (req, res) => {
         await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
         
         // Update Transaction
-        // We might need to find the exact transaction ID if it was created via /create
-        // Or just insert a new one if it's confirmed externally
-        // Assuming we are confirming a pending one or inserting a new completed one
-        
         // For simplicity, let's insert a COMPLETED DEPOSIT record
         await query(
             'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "COMPLETED", ?, NOW())',
@@ -520,84 +924,110 @@ app.post('/api/transaction/confirm', async (req, res) => {
     }
 });
 
-// PAGVIVA PROXY
-app.post('/api/pagviva/deposit', async (req, res) => {
-    // In production, configure PAGVIVA_TOKEN and PAGVIVA_SECRET in .env
-    // Here we use credentials passed from frontend or environment
-    const { token, secret, apiKey, ...data } = req.body;
-    
-    // Prioritize environment variables for security
-    const apiToken = process.env.PAGVIVA_TOKEN || token;
-    const apiSecret = process.env.PAGVIVA_SECRET || secret;
-    const apiApiKey = process.env.PAGVIVA_API_KEY || apiKey;
-
-    if (!apiToken || !apiSecret || !apiApiKey) {
-        return res.status(400).json({ error: 'Credenciais PagVIVA ausentes.' });
-    }
+// ADMIN ROUTES
+app.get('/api/admin/users', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     try {
-        const authString = btoa(`${apiToken}:${apiSecret}`);
-        const response = await fetch('https://pagviva.com/api/transaction/deposit', {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": `Bearer ${authString}`,
-                "X-API-KEY": apiApiKey
-            },
-            body: JSON.stringify(data)
-        });
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
-        const result = await response.json();
+        const users = await query('SELECT * FROM users ORDER BY created_at DESC');
         
-        if (!response.ok) {
-            return res.status(response.status).json(result);
-        }
+        // Enhance users with referral counts
+        const enhancedUsers = await Promise.all(users.map(async (u) => {
+            const referralCount = await query('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?', [u.id]);
+            return {
+                ...u,
+                referralCount: referralCount[0].count,
+                balance: parseFloat(u.balance),
+                bonusBalance: parseFloat(u.bonusBalance)
+            };
+        }));
 
-        // Log transaction in our DB
-        // const { userId, amount } = data; // Assuming userId is passed
-        // await query('INSERT INTO transactions ...');
-
-        res.json(result);
+        res.json(enhancedUsers);
     } catch (err) {
-        console.error('PagViva Proxy Error:', err);
-        res.status(500).json({ error: 'Erro ao comunicar com PagVIVA.' });
+        console.error("Admin Users Error", err);
+        res.status(500).json({ error: 'Erro ao buscar usuários' });
     }
 });
 
-app.get('/api/pagviva/status/:id', async (req, res) => {
-    const { id } = req.params;
-    const { token, secret, apiKey } = req.query;
-
-    const apiToken = process.env.PAGVIVA_TOKEN || token;
-    const apiSecret = process.env.PAGVIVA_SECRET || secret;
-    const apiApiKey = process.env.PAGVIVA_API_KEY || apiKey;
-
-    if (!apiToken) return res.status(400).json({ error: 'Credenciais ausentes.' });
+// ADMIN: Update User
+app.put('/api/admin/users/:id', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     try {
-        const authString = btoa(`${apiToken}:${apiSecret}`);
-        const response = await fetch(`https://pagviva.com/api/transaction/${id}`, {
-            method: 'GET',
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": `Bearer ${authString}`,
-                "X-API-KEY": apiApiKey
-            }
-        });
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
-        const result = await response.json();
-        res.json(result);
+        const { id } = req.params;
+        const { balance, bonusBalance, isVip, vipExpiry, inventory } = req.body;
+
+        await query(
+            'UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?',
+            [balance, bonusBalance, id]
+        );
+        
+        res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Erro ao verificar status.' });
+        console.error("Admin Update User Error", err);
+        res.status(500).json({ error: 'Erro ao atualizar usuário' });
+    }
+});
+
+// ADMIN: Delete User
+app.delete('/api/admin/users/:id', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        
+        const { id } = req.params;
+
+        // Delete related records first to maintain integrity
+        await query('DELETE FROM referrals WHERE referrer_id = ? OR referred_user_id = ?', [id, id]);
+        await query('DELETE FROM transactions WHERE user_id = ?', [id]);
+        
+        // Delete user
+        await query('DELETE FROM users WHERE id = ?', [id]);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Admin Delete User Error", err);
+        res.status(500).json({ error: 'Erro ao excluir usuário' });
+    }
+});
+
+app.get('/api/admin/stats', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+
+        const [totalUsers] = await query('SELECT COUNT(*) as count FROM users');
+        const [totalDeposits] = await query('SELECT SUM(amount) as total FROM transactions WHERE type = "DEPOSIT" AND status = "COMPLETED"');
+        const [totalWithdrawals] = await query('SELECT SUM(amount) as total FROM transactions WHERE type = "WITHDRAW" AND status = "COMPLETED"');
+        
+        res.json({
+            totalUsers: totalUsers.count,
+            totalDeposited: totalDeposits.total || 0,
+            totalWithdrawn: totalWithdrawals.total || 0
+        });
+    } catch (err) {
+        console.error("Admin Stats Error", err);
+        res.status(500).json({ error: 'Erro ao buscar estatísticas' });
     }
 });
 
 // Serve Static Frontend (Production)
 // If dist exists, serve it. If not, just send API status.
 const distPath = path.join(__dirname, '../dist');
-const fs = require('fs');
 
 if (fs.existsSync(distPath)) {        
     app.use(express.static(distPath));    

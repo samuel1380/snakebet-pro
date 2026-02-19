@@ -7,7 +7,7 @@ import {
   Menu, Bell, ChevronDown, ArrowUpRight, ArrowDownRight, Wallet, History, CreditCard,
   ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, ShoppingBag, Banknote
 } from 'lucide-react';
-import { getAppConfig, saveAppConfig, AppConfig } from '../../utils/config';
+import { api } from '../../services/api';
 
 interface AdminScreenProps {
   onLogout: () => void;
@@ -79,7 +79,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Config State
@@ -93,68 +93,99 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalVips, setTotalVips] = useState(0);
 
+  const loadUsers = async () => {
+    try {
+        const data = await api.getAdminUsers();
+        setUsers(data);
+    } catch (error) {
+        console.error("Failed to load users", error);
+    }
+  };
+
+  const loadStats = async () => {
+      try {
+          const stats = await api.getAdminStats();
+          setTotalUsers(stats.totalUsers);
+          setTotalDeposited(stats.totalDeposited);
+          setTotalBalance(0); // API doesn't return this yet
+          setTotalVips(0); // API doesn't return this yet
+      } catch (error) {
+          console.error("Failed to load stats", error);
+      }
+  };
+
   useEffect(() => {
     loadUsers();
-    // Load config initially
-    setConfig(getAppConfig());
+    loadStats();
+    
+    const loadConfig = async () => {
+        try {
+            const apiConfig = await api.getAdminConfig();
+            if (apiConfig && Object.keys(apiConfig).length > 0) {
+                 setConfig(prev => ({
+                     ...prev, 
+                     ...apiConfig,
+                     // Ensure nested objects are merged correctly if partial
+                     prices: { ...prev.prices, ...(apiConfig.prices || {}) },
+                     pagViva: { ...prev.pagViva, ...(apiConfig.pagViva || {}) }
+                 }));
+            }
+        } catch (error) {
+            console.error("Failed to load admin config", error);
+        }
+    };
+    loadConfig();
   }, []);
 
-  const handleSaveConfig = () => {
-    setSavingConfig(true);
-    // Simulate slight delay for UX
-    setTimeout(() => {
-        saveAppConfig(config);
-        setSavingConfig(false);
-        setConfigSuccess(true);
-        setTimeout(() => setConfigSuccess(false), 3000);
-    }, 800);
-  };
-
-
-  const loadUsers = () => {
-    const loadedUsers: User[] = [];
-    let deposited = 0;
-    let balance = 0;
-    let vips = 0;
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('snakebet_data_')) {
-        try {
-          const userData = JSON.parse(localStorage.getItem(key) || '{}');
-          if (!userData.username) {
-              userData.username = key.replace('snakebet_data_', '');
-          }
-          loadedUsers.push(userData);
-          deposited += (userData.totalDeposited || 0);
-          balance += (userData.balance || 0);
-          if (userData.isVip) vips++;
-        } catch (e) {
-          console.error("Error loading user data", key, e);
-        }
+  const handleSaveConfig = async () => {
+      setSavingConfig(true);
+      try {
+          await api.saveAdminConfig(config);
+          setConfigSuccess(true);
+          setTimeout(() => setConfigSuccess(false), 3000);
+      } catch (error) {
+          console.error("Failed to save config", error);
+          alert("Erro ao salvar configurações.");
+      } finally {
+          setSavingConfig(false);
       }
-    }
-    
-    setUsers(loadedUsers);
-    setTotalUsers(loadedUsers.length);
-    setTotalDeposited(deposited);
-    setTotalBalance(balance);
-    setTotalVips(vips);
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     if (!editingUser) return;
-    localStorage.setItem(`snakebet_data_${editingUser.username}`, JSON.stringify(editingUser));
-    loadUsers();
-    setEditingUser(null);
+    try {
+        if (editingUser.id) {
+            await api.updateUser(editingUser.id, {
+                balance: editingUser.balance,
+                bonusBalance: editingUser.bonusBalance,
+                isVip: editingUser.isVip,
+                // Add other fields if API supports them
+            });
+        }
+        // Keep local storage sync for fallback
+        localStorage.setItem(`snakebet_data_${editingUser.username}`, JSON.stringify(editingUser));
+        loadUsers();
+        setEditingUser(null);
+    } catch (error) {
+        console.error("Failed to save user", error);
+        alert("Erro ao salvar usuário.");
+    }
   };
 
-  const handleDeleteUser = (username: string) => {
-    localStorage.removeItem(`snakebet_data_${username}`);
-    localStorage.removeItem(`snakebet_user_${username}`);
-    localStorage.removeItem(`snakebet_balance_${username}`);
-    loadUsers();
-    setShowDeleteConfirm(null);
+  const handleDeleteUser = async (user: User) => {
+    try {
+        if (user.id) {
+            await api.deleteUser(user.id);
+        }
+        localStorage.removeItem(`snakebet_data_${user.username}`);
+        localStorage.removeItem(`snakebet_user_${user.username}`);
+        localStorage.removeItem(`snakebet_balance_${user.username}`);
+        loadUsers();
+        setShowDeleteConfirm(null);
+    } catch (error) {
+        console.error("Failed to delete user", error);
+        alert("Erro ao excluir usuário.");
+    }
   };
 
   const filteredUsers = users.filter(u => 
@@ -432,7 +463,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                                     </div>
                                                     <div>
                                                         <div className="font-bold text-white text-sm">{user.username}</div>
-                                                        <div className="text-xs text-gray-600">ID: #{Math.floor(Math.random() * 10000)}</div>
+                                                        <div className="text-xs text-gray-600">ID: #{user.id}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -466,7 +497,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                                         <Edit size={16} />
                                                     </button>
                                                     <button 
-                                                        onClick={() => setShowDeleteConfirm(user.username)}
+                                                        onClick={() => setShowDeleteConfirm(user)}
                                                         className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
                                                         title="Excluir Conta"
                                                         >
@@ -1192,7 +1223,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Excluir Conta?</h3>
                     <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-                        Esta ação removerá permanentemente o usuário <span className="text-white font-bold bg-white/10 px-1 rounded">{showDeleteConfirm}</span> e todos os dados financeiros associados.
+                        Esta ação removerá permanentemente o usuário <span className="text-white font-bold bg-white/10 px-1 rounded">{showDeleteConfirm.username}</span> e todos os dados financeiros associados.
                     </p>
                     <div className="flex gap-3 justify-center">
                         <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)} className="flex-1 border-white/10">Cancelar</Button>

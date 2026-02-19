@@ -149,13 +149,17 @@ const App: React.FC = () => {
 
     if (path.startsWith('/u/')) {
         // Capture referral code
-        let referrer = path.split('/u/')[1];
-        if (referrer) {
-            // Remove trailing slash if present
-            referrer = referrer.replace(/\/$/, '');
-            localStorage.setItem('snakebet_referrer', referrer);
-            // Redirect to home to clean URL
-            window.history.replaceState({}, '', '/');
+        // Split by slash and take the first part after /u/
+        const parts = path.split('/u/');
+        if (parts.length > 1) {
+            // Remove query params (?) and hash (#) and trailing slash
+            let referrer = parts[1].split('/')[0].split('?')[0].split('#')[0];
+            
+            if (referrer && referrer.trim()) {
+                localStorage.setItem('snakebet_referrer', referrer.trim());
+                // Redirect to home to clean URL
+                window.history.replaceState({}, '', '/');
+            }
         }
     }
   }, []);

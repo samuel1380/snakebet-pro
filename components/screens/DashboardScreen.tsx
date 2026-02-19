@@ -4,7 +4,6 @@ import { Input } from '../ui/Input';
 import { User, BetRecord, Difficulty, DIFFICULTY_CONFIG, ITEM_PRICES, TransactionRecord } from '../../types';
 import { Wallet, LogOut, TrendingUp, AlertTriangle, DollarSign, History, ArrowUpRight, ArrowDownLeft, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Skull, Key, CheckCircle, Menu, X, ShoppingBag, Shield, Magnet, Zap, Gift, RefreshCw, Lock, Unlock, Users, Copy, ExternalLink, Sparkles, Flame, Info, ChevronRight, Star, Crown, Clock, Instagram, Trophy, Medal, TrendingDown, Coins, Box, Star as StarIcon, Banknote, Heart, QrCode } from 'lucide-react';
 import { getAppConfig, AppConfig, CONFIG_KEY } from '../../utils/config';
-import { PagVivaService } from '../../services/pagviva';
 import { api } from '../../services/api';
 
 interface DashboardScreenProps {
@@ -375,9 +374,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     let interval: any;
     
     const checkStatus = async () => {
-        if (!currentTxId || !config.pagViva?.token) return;
+        if (!currentTxId) return;
         
-        const status = await PagVivaService.checkTransactionStatus(config, currentTxId);
+        const status = await api.checkDepositStatus(currentTxId);
         
         if (status === 'PAID' || status === 'COMPLETED' || status === 'APPROVED') {
             clearInterval(interval);
@@ -478,12 +477,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
     try {
         if (activeModal === 'DEPOSIT') {
-            const depositData = await PagVivaService.createDeposit(config, val, {
-                name: user.username,
-                email: 'user@example.com',
-                cpf: pixKey.replace(/\D/g, ''),
-                phone: '00000000000'
-            });
+            const depositData = await api.createDeposit(val, pixKey.replace(/\D/g, ''));
 
             if (!depositData) {
                 throw new Error("Sem resposta do gateway de pagamento.");
@@ -549,12 +543,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             return;
         } else if (activeModal === 'WITHDRAW') {
             // ... existing withdraw code ...
-            const withdrawData = await PagVivaService.requestWithdraw(
-                 config, 
-                 val, 
-                 pixKey, 
-                 'cpf'
-             );
+            const withdrawData = await api.requestWithdraw(val, pixKey, 'cpf');
             
             // Generate unique ID based on gateway response or timestamp
             const txId = withdrawData.id || `WD-${Date.now()}`;
@@ -763,11 +752,75 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       }
   };
 
-  const copyReferral = () => {
+  const [affiliateStats, setAffiliateStats] = useState<any>(null);
+
+    useEffect(() => {
+        if (activeModal === 'REFERRAL') {
+            loadAffiliateStats();
+        }
+    }, [activeModal]);
+
+    const loadAffiliateStats = async () => {
+        try {
+            const stats = await api.getAffiliateStats();
+            setAffiliateStats(stats);
+        } catch (error) {
+            console.error("Failed to load affiliate stats", error);
+        }
+    };
+
+    const copyReferral = () => {
         const baseUrl = window.location.origin;
-        navigator.clipboard.writeText(`${baseUrl}/u/${user.username}`);
-        setReferralCopied(true);
-        setTimeout(() => setReferralCopied(false), 2000);
+        // Ensure username is safe for URL
+        const safeUsername = encodeURIComponent(user.username);
+        const url = `${baseUrl}/u/${safeUsername}`;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: 'SnakeBet',
+                text: 'Venha jogar SnakeBet e ganhe bônus!',
+                url: url,
+            }).catch(console.error);
+        } else {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    setReferralCopied(true);
+                    setTimeout(() => setReferralCopied(false), 2000);
+                }).catch(err => {
+                    console.error('Async: Could not copy text: ', err);
+                    fallbackCopyTextToClipboard(url);
+                });
+            } else {
+                fallbackCopyTextToClipboard(url);
+            }
+        }
+    };
+
+    const fallbackCopyTextToClipboard = (text: string) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Avoid scrolling to bottom
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                setReferralCopied(true);
+                setTimeout(() => setReferralCopied(false), 2000);
+            }
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+        }
+
+        document.body.removeChild(textArea);
     };
 
   const copyQrCode = () => {
@@ -1588,11 +1641,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                             <div>
                                 <h4 className="font-bold text-sm text-gray-300 mb-4 flex items-center gap-2">
-                                    <History size={14} /> Seus Indicados
+                                    <History size={14} /> Seus Indicados Recentes
                                 </h4>
                                 <div className="max-h-[200px] overflow-y-auto pr-2 space-y-2">
-                                    {user.referrals && user.referrals.length > 0 ? (
-                                        user.referrals.map((ref, i) => (
+                                    {affiliateStats?.recentReferrals && affiliateStats.recentReferrals.length > 0 ? (
+                                        affiliateStats.recentReferrals.map((ref: any, i: number) => (
                                             <div key={i} className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center text-xs font-bold">
@@ -1605,13 +1658,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                                 </div>
                                                 <div className="text-right">
                                                     <div className="text-xs text-gray-500">Depositou</div>
-                                                    <div className="text-green-400 font-bold font-mono">R$ {ref.depositAmount.toFixed(2)}</div>
+                                                    <div className="text-sm font-bold text-neon-green">R$ {(ref.depositAmount || 0).toFixed(2)}</div>
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-center py-8 text-gray-600 text-sm border-2 border-dashed border-white/5 rounded-xl">
-                                            Nenhum indicado ainda.<br/>Compartilhe seu link!
+                                        <div className="text-center py-8 text-gray-500 text-xs">
+                                            Você ainda não tem indicações.
                                         </div>
                                     )}
                                 </div>
