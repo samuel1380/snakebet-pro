@@ -151,9 +151,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
             await api.saveAdminConfig(config);
             setConfigSuccess(true);
             setTimeout(() => setConfigSuccess(false), 3000);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to save config", error);
-            alert("Erro ao salvar configurações.");
+            const msg = error?.details || "Erro ao salvar configurações.";
+            alert(`Erro: ${msg}`);
         } finally {
             setSavingConfig(false);
         }

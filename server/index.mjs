@@ -139,51 +139,12 @@ async function initDB() {
 }
 
 
-// Helper: Query DB (Using .query instead of .execute for better compatibility with complex UPSERT queries)
+// Helper: Query DB
 async function query(sql, params) {
     if (!pool) throw new Error('Database not initialized');
     const [rows] = await pool.query(sql, params);
     return rows;
 }
-
-// CONFIG: Save Config
-app.post('/api/admin/config', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-
-    let connection;
-    try {
-        const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
-
-        const config = req.body;
-        const entries = Object.entries(config).filter(([key]) => key !== 'id'); // Exclude ID if present
-
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-
-        for (const [key, value] of entries) {
-            // Safer serialization: Only stringify if it's a non-null object
-            const stringValue = (value !== null && typeof value === 'object')
-                ? JSON.stringify(value)
-                : String(value !== undefined ? value : '');
-
-            await connection.query(
-                'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-                [key, stringValue, stringValue]
-            );
-        }
-
-        await connection.commit();
-        res.json({ success: true });
-    } catch (err) {
-        if (connection) await connection.rollback();
-        console.error("Save Config Error", err);
-        res.status(500).json({ error: 'Erro ao salvar configurações.', details: err.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
 
 // API Routes
 
@@ -453,6 +414,33 @@ app.get('/api/admin/config', async (req, res) => {
     }
 });
 
+// CONFIG: Save Config
+app.post('/api/admin/config', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+
+        const config = req.body;
+        const values = Object.entries(config).map(([key, value]) => {
+            const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            return [key, stringValue];
+        });
+
+        if (values.length > 0) {
+            for (const [key, value] of values) {
+                await query('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', [key, value, value]);
+            }
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Save Config Error", err);
+        res.status(500).json({ error: 'Erro ao salvar configurações.', details: err.message });
+    }
+});
 
 // DEPOSIT: Create Deposit (Secure)
 app.post('/api/deposit', async (req, res) => {
