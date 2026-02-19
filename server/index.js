@@ -521,14 +521,30 @@ app.get('/api/pagviva/status/:id', async (req, res) => {
 const distPath = path.join(__dirname, '../dist');
 const fs = require('fs');
 
-if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+if (fs.existsSync(distPath)) {        
+    app.use(express.static(distPath));    
+    app.get('*', (req, res) => {      
         res.sendFile(path.join(distPath, 'index.html'));
     });
 } else {
-    app.get('/', (req, res) => {
-        res.send('SnakeBet API is running. Frontend is hosted separately.');
+    // Fallback for when build is missing
+    app.get('*', (req, res) => {      
+        res.status(200).send(`
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #111; color: #fff;">
+                    <h1>SnakeBet API is running</h1>
+                    <p>But the Frontend (visual part) was not found.</p>
+                    <div style="background: #222; padding: 20px; border-radius: 8px; display: inline-block; text-align: left;">
+                        <p style="color: #fbbf24; margin: 0 0 10px 0;"><strong>⚠️ Fix Required in Render:</strong></p>
+                        <p style="margin: 5px 0;">1. Go to <strong>Settings</strong></p>
+                        <p style="margin: 5px 0;">2. Scroll to <strong>Build & Deploy</strong></p>
+                        <p style="margin: 5px 0;">3. Set <strong>Build Command</strong> to: <code>npm install && npm run build</code></p>
+                        <p style="margin: 5px 0;">4. Set <strong>Start Command</strong> to: <code>npm run server</code></p>
+                        <p style="margin: 5px 0;">5. Click <strong>Save Changes</strong> (or Manual Deploy)</p>
+                    </div>
+                </body>
+            </html>
+        `);
     });
 }
 
