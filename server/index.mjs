@@ -987,15 +987,19 @@ app.put('/api/admin/users/:id', async (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        'UPDATE users SET balance = ?, bonusBalance = ?, isVip = ?, vipExpiry = ?, inventory = ? WHERE id = ?',
+        const { id } = req.params;
+        const { balance, bonusBalance, isVip, vipExpiry, inventory } = req.body;
+
+        await query(
+            'UPDATE users SET balance = ?, bonusBalance = ?, isVip = ?, vipExpiry = ?, inventory = ? WHERE id = ?',
             [balance, bonusBalance, isVip ? 1 : 0, vipExpiry || null, JSON.stringify(inventory || {}), id]
         );
 
-res.json({ success: true });
+        res.json({ success: true });
     } catch (err) {
-    console.error("Admin Update User Error", err);
-    res.status(500).json({ error: 'Erro ao atualizar usuário' });
-}
+        console.error("Admin Update User Error", err);
+        res.status(500).json({ error: 'Erro ao atualizar usuário' });
+    }
 });
 
 // ADMIN: Delete User
