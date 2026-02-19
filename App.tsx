@@ -148,6 +148,9 @@ const App: React.FC = () => {
   }, [user]);
 
   const handleLogin = (userData: User) => {
+    // Ensure we clear any stale admin session when logging in as a regular user
+    localStorage.removeItem('snakebet_admin_session');
+
     const storedData = localStorage.getItem(`snakebet_data_${userData.username}`);
     let fullUser = userData;
     
@@ -211,6 +214,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('snakebet_admin_session');
     setUser(null);
     setBetHistory([]);
     setCurrentScreen(AppScreen.AUTH);
