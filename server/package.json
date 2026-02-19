@@ -2,10 +2,11 @@
   "name": "snakebet-server",
   "version": "1.0.0",
   "description": "Backend for SnakeBet Pro",
-  "main": "index.js",
+  "main": "index.mjs",
+  "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node index.mjs",
+    "dev": "nodemon index.mjs",
     "build": "echo 'No build step required'"
   },
   "dependencies": {
