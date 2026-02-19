@@ -1,6 +1,7 @@
 import { ITEM_PRICES } from '../types';
 
 export interface AppConfig {
+  version: number;
   minDeposit: number;
   minWithdraw: number;
   autoWithdrawEnabled: boolean;
@@ -20,8 +21,9 @@ export interface AppConfig {
 export const CONFIG_KEY = 'snakebet_app_config';
 
 export const DEFAULT_CONFIG: AppConfig = {
-  minDeposit: 20.00,
-  minWithdraw: 50.00, // Changed default to be more realistic/standard, user can change it
+  version: 1,
+  minDeposit: 1.00, // Changed to 1.00 as per user request
+  minWithdraw: 5.00, // Changed to 5.00 to match user screenshot
   autoWithdrawEnabled: false,
   autoWithdrawLimit: 100.00,
   prices: { ...ITEM_PRICES },
@@ -43,6 +45,16 @@ export const getAppConfig = (): AppConfig => {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
+      
+      // Migration: If version is missing or old, force update critical values
+      if (!parsed.version || parsed.version < 1) {
+          parsed.minDeposit = 1.00;
+          parsed.minWithdraw = 5.00;
+          parsed.version = 1;
+          // Note: We don't save back here to avoid side effects, 
+          // but the app will see the correct values.
+      }
+
       // Merge with default to ensure all keys exist (in case of updates)
       return {
         ...DEFAULT_CONFIG,
