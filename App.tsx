@@ -28,13 +28,28 @@ const App: React.FC = () => {
     const path = window.location.pathname;
     const adminSession = localStorage.getItem('snakebet_admin_session');
 
-    // Fetch global config from server on mount
+    // Fetch global config from server on mount (safe merge - never overwrites with partial data)
     const configFetch = api.getPublicConfig()
       .then(data => {
-        console.log("Global config loaded from server:", data);
-        saveAppConfig(data);
+        if (data && typeof data === 'object') {
+          const existing = getAppConfig(); // Get current local config
+          // Safely merge: server data takes priority for its known keys, but never removes local-only keys
+          const merged = {
+            ...existing,
+            ...(data.minDeposit !== undefined && { minDeposit: parseFloat(data.minDeposit) }),
+            ...(data.minWithdraw !== undefined && { minWithdraw: parseFloat(data.minWithdraw) }),
+            ...(data.cpaValue !== undefined && { cpaValue: parseFloat(data.cpaValue) }),
+            ...(data.cpaMinDeposit !== undefined && { cpaMinDeposit: parseFloat(data.cpaMinDeposit) }),
+            ...(data.realRevShare !== undefined && { realRevShare: parseFloat(data.realRevShare) }),
+            ...(data.fakeRevShare !== undefined && { fakeRevShare: parseFloat(data.fakeRevShare) }),
+            ...(data.autoWithdrawEnabled !== undefined && { autoWithdrawEnabled: Boolean(data.autoWithdrawEnabled) }),
+            ...(data.autoWithdrawLimit !== undefined && { autoWithdrawLimit: parseFloat(data.autoWithdrawLimit) }),
+            ...(data.prices && typeof data.prices === 'object' && { prices: { ...existing.prices, ...data.prices } }),
+          };
+          saveAppConfig(merged);
+        }
       })
-      .catch(err => console.error("Failed to load global config", err));
+      .catch(err => console.warn("Config server unavailable, using local defaults:", err));
 
     // Check for user token
     const token = localStorage.getItem('snakebet_token');
@@ -144,14 +159,14 @@ const App: React.FC = () => {
           // If fallback fails or it's an auth error, remove token
           localStorage.removeItem('snakebet_token');
         });
-      // Wait for API checks, config fetch and min time
-      Promise.all([apiCheck, configFetch, minLoadingTime]).finally(() => {
+      // Wait for API check and min time. Config is fire-and-forget (never blocks loading)
+      Promise.all([apiCheck, minLoadingTime]).finally(() => {
         setIsLoading(false);
       });
 
     } else {
-      // Even if no token, show splash for a bit
-      minLoadingTime.then(() => setIsLoading(false));
+      // Even if no token, wait for min loading time then show auth screen
+      Promise.all([configFetch, minLoadingTime]).finally(() => setIsLoading(false));
     }
 
     if (path.startsWith('/u/')) {
