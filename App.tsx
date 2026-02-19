@@ -149,8 +149,10 @@ const App: React.FC = () => {
 
     if (path.startsWith('/u/')) {
         // Capture referral code
-        const referrer = path.split('/u/')[1];
+        let referrer = path.split('/u/')[1];
         if (referrer) {
+            // Remove trailing slash if present
+            referrer = referrer.replace(/\/$/, '');
             localStorage.setItem('snakebet_referrer', referrer);
             // Redirect to home to clean URL
             window.history.replaceState({}, '', '/');

@@ -83,6 +83,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   // Listen for config changes
   useEffect(() => {
+    // Sync with localStorage on mount (fixes SSR hydration mismatch)
+    setConfig(getAppConfig());
+
     const handleConfigUpdate = () => {
         setConfig(getAppConfig());
     };
@@ -454,8 +457,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
 
     if (activeModal === 'DEPOSIT') {
-        if (val < config.minDeposit) {
-            setWalletError(`Depósito mínimo de R$ ${config.minDeposit.toFixed(2)}.`);
+        // Force refresh config to ensure latest value
+        const currentConfig = getAppConfig();
+        if (val < currentConfig.minDeposit) {
+            setWalletError(`Depósito mínimo de R$ ${currentConfig.minDeposit.toFixed(2)}.`);
+            // Update state as well to keep UI in sync
+            setConfig(currentConfig);
             return;
         }
         
@@ -1568,7 +1575,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                 <label className="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Seu Link de Indicação</label>
                             <div className="flex gap-2">
                                 <code className="flex-1 bg-black/60 p-3 rounded-lg text-sm text-blue-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap border border-white/5">
-                                    {window.location.host}/u/{user.username}
+                                    {window.location.origin}/u/{user.username}
                                 </code>
                                 <button 
                                         onClick={copyReferral}
