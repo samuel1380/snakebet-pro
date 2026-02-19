@@ -167,7 +167,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                     balance: editingUser.balance,
                     bonusBalance: editingUser.bonusBalance,
                     isVip: editingUser.isVip,
-                    // Add other fields if API supports them
+                    vipExpiry: editingUser.vipExpiry,
+                    inventory: editingUser.inventory,
+                    totalDeposited: editingUser.totalDeposited
                 });
             }
             // Keep local storage sync for fallback

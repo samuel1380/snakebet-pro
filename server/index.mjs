@@ -52,6 +52,10 @@ async function createTables() {
                 cpa_earnings DECIMAL(10, 2) DEFAULT 0.00,
                 revshare_earnings DECIMAL(10, 2) DEFAULT 0.00,
                 totalDeposited DECIMAL(10, 2) DEFAULT 0.00,
+                isVip BOOLEAN DEFAULT FALSE,
+                vipExpiry BIGINT DEFAULT 0,
+                inventory TEXT,
+                dailyBonus TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -123,15 +127,17 @@ async function createTables() {
 
 async function initDB() {
     try {
+        console.log("Testing Database Connection...");
         pool = mysql.createPool(dbConfig);
-        console.log('Connected to MySQL/MariaDB');
+        await pool.query('SELECT 1');
+        console.log('Database Connected Successfully.');
         await createTables();
     } catch (err) {
-        console.error('Database connection failed:', err);
+        console.error('FATAL: Database Connection Failed!', err);
+        process.exit(1);
     }
 }
 
-initDB();
 
 // Helper: Query DB
 async function query(sql, params) {
@@ -248,6 +254,10 @@ app.get('/api/user/me', async (req, res) => {
             phone: user.phone,
             cpf: user.cpf,
             invitedBy: user.invitedBy,
+            totalDeposited: parseFloat(user.totalDeposited || 0),
+            isVip: Boolean(user.isVip),
+            vipExpiry: user.vipExpiry ? new Date(user.vipExpiry).getTime() : 0,
+            inventory: typeof user.inventory === 'string' ? JSON.parse(user.inventory) : (user.inventory || { shields: 0, magnets: 0, extraLives: 0 }),
             affiliateEarnings: {
                 cpa: parseFloat(user.cpa_earnings || 0),
                 revShare: parseFloat(user.revshare_earnings || 0)
@@ -641,8 +651,8 @@ app.post('/api/deposit/confirm', async (req, res) => {
         const cpaValue = parseFloat(config.cpaValue || 10);
         const cpaMinDeposit = parseFloat(config.cpaMinDeposit || 20);
 
-        // If user was invited, hasn't triggered CPA yet, and deposit meets criteria
-        if (user.invitedBy && (user.totalDeposited + amount) >= cpaMinDeposit) {
+        // If user was invited, hasn't triggered CPA yet, and total deposits meet criteria
+        if (user.invitedBy && user.totalDeposited >= cpaMinDeposit) {
             // Check if CPA already paid
             const referrer = (await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]))[0];
             if (referrer) {
@@ -876,78 +886,11 @@ app.post('/api/game/result', async (req, res) => {
     }
 });
 
-// TRANSACTION: Confirm Deposit (CPA Logic)
-app.post('/api/transaction/confirm', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-    const token = authHeader.split(' ')[1];
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        const { txId, amount } = req.body;
-
-        // Update transaction status
-        // Check if already completed to avoid double CPA
-        const existing = await query('SELECT status FROM transactions WHERE details LIKE ?', [`%${txId}%`]);
-        if (existing.length > 0 && existing[0].status === 'COMPLETED') {
-            return res.json({ success: true, message: 'Already processed' });
-        }
-
-        // Update User Balance
-        await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
-
-        // Update Transaction
-        // For simplicity, let's insert a COMPLETED DEPOSIT record
-        await query(
-            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "COMPLETED", ?, NOW())',
-            [decoded.id, amount, JSON.stringify({ txId })]
-        );
-
-        // CPA LOGIC
-        const user = (await query('SELECT * FROM users WHERE id = ?', [decoded.id]))[0];
-
-        // Calculate total deposited (including this one)
-        const deposits = await query('SELECT SUM(amount) as total FROM transactions WHERE user_id = ? AND type = "DEPOSIT" AND status = "COMPLETED"', [decoded.id]);
-        const totalDeposited = parseFloat(deposits[0].total || 0);
-
-        if (user.invitedBy) {
-            const settings = await query('SELECT * FROM settings');
-            const config = {};
-            settings.forEach(s => config[s.setting_key] = s.setting_value);
-
-            const cpaMin = parseFloat(config.cpaMinDeposit || 20);
-            const cpaValue = parseFloat(config.cpaValue || 10);
-
-            // Check if CPA already paid for this user
-            const referral = await query(
-                'SELECT * FROM referrals WHERE referred_user_id = ? AND cpa_paid = 1',
-                [decoded.id]
-            );
-
-            // If not paid yet, and total deposits meet the baseline requirement
-            if (referral.length === 0 && totalDeposited >= cpaMin) {
-                const referrer = await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]);
-                if (referrer.length > 0) {
-                    // Pay CPA
-                    await query(
-                        'UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?',
-                        [cpaValue, referrer[0].id]
-                    );
-
-                    // Update Referral Status
-                    await query(
-                        'UPDATE referrals SET status = "QUALIFIED", cpa_paid = 1 WHERE referred_user_id = ?',
-                        [decoded.id]
-                    );
-                }
-            }
-        }
-
-        res.json({ success: true });
+res.json({ success: true });
     } catch (err) {
-        console.error("Transaction Confirm Error", err);
-        res.status(500).json({ error: 'Erro ao confirmar transação.' });
-    }
+    console.error("Confirm Deposit Error", err);
+    res.status(500).json({ error: 'Erro ao confirmar depósito.' });
+}
 });
 
 // ADMIN ROUTES
@@ -1081,6 +1024,8 @@ if (fs.existsSync(distPath)) {
     });
 }
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+initDB().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+    });
 });

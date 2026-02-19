@@ -120,19 +120,19 @@ const App: React.FC = () => {
               username: apiUser.username,
               balance: apiUser.balance || 0,
               bonusBalance: apiUser.bonusBalance || 0,
-              isVip: apiUser.is_vip || false,
-              vipExpiry: apiUser.vip_expiry || 0,
-              dailyBonusClaims: 0,
-              boxTracker: { count: 0, totalSpent: 0 },
-              transactions: [],
-              rollover: { current: 0, target: 0 },
-              lastDailyBonus: 0,
-              consecutiveFreeClaims: 0,
-              totalDeposited: 0,
-              inventory: { shields: 0, magnets: 0, extraLives: 0 },
-              referrals: [],
+              isVip: apiUser.isVip || false,
+              vipExpiry: apiUser.vipExpiry || 0,
+              dailyBonusClaims: apiUser.dailyBonusClaims || 0,
+              boxTracker: apiUser.boxTracker || { count: 0, totalSpent: 0 },
+              transactions: apiUser.transactions || [],
+              rollover: apiUser.rollover || { current: 0, target: 0 },
+              lastDailyBonus: apiUser.lastDailyBonus || 0,
+              consecutiveFreeClaims: apiUser.consecutiveFreeClaims || 0,
+              totalDeposited: apiUser.totalDeposited || 0,
+              inventory: apiUser.inventory || { shields: 0, magnets: 0, extraLives: 0 },
+              referrals: apiUser.referrals || [],
               invitedBy: apiUser.invitedBy,
-              affiliateEarnings: apiUser.affiliateEarnings
+              affiliateEarnings: apiUser.affiliateEarnings || { cpa: 0, revShare: 0 }
             };
             setUser(userObj);
             setCurrentScreen(AppScreen.DASHBOARD);
