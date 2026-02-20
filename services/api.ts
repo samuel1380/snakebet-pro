@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = (import.meta as any)?.env?.VITE_API_URL || '/api';
 
 export const api = {
     async register(data: any) {
@@ -18,6 +18,16 @@ export const api = {
             }
             throw errorBody;
         }
+        return res.json();
+    },
+
+    async adminLogin(password: string) {
+        const res = await fetch(`${API_URL}/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        if (!res.ok) throw await res.json();
         return res.json();
     },
 
@@ -50,17 +60,33 @@ export const api = {
         return res.json();
     },
 
-    async updateWallet(balance: number, bonusBalance: number) {
+    async startGame(betAmount: number) {
         const token = localStorage.getItem('snakebet_token');
-        if (!token) return;
+        if (!token) throw new Error("No token");
 
-        const res = await fetch(`${API_URL}/wallet/sync`, {
+        const res = await fetch(`${API_URL}/game/start`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ balance, bonusBalance })
+            body: JSON.stringify({ betAmount })
+        });
+        if (!res.ok) throw await res.json();
+        return res.json();
+    },
+
+    async endGame(gameId: string, multiplier: number) {
+        const token = localStorage.getItem('snakebet_token');
+        if (!token) throw new Error("No token");
+
+        const res = await fetch(`${API_URL}/game/end`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ gameId, multiplier })
         });
         if (!res.ok) throw await res.json();
         return res.json();
@@ -104,7 +130,7 @@ export const api = {
     },
 
     async getAdminConfig() {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/config`, {
@@ -115,7 +141,7 @@ export const api = {
     },
 
     async saveAdminConfig(config: any) {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/config`, {
@@ -131,7 +157,7 @@ export const api = {
     },
 
     async getAdminUsers() {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/users`, {
@@ -142,7 +168,7 @@ export const api = {
     },
 
     async getAdminStats() {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/stats`, {
@@ -153,7 +179,7 @@ export const api = {
     },
 
     async updateUser(id: number, data: any) {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/users/${id}`, {
@@ -169,7 +195,7 @@ export const api = {
     },
 
     async deleteUser(id: number) {
-        const token = localStorage.getItem('snakebet_token');
+        const token = localStorage.getItem('snakebet_admin_token');
         if (!token) throw new Error("No token");
 
         const res = await fetch(`${API_URL}/admin/users/${id}`, {

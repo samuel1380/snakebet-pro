@@ -96,6 +96,21 @@ async function createTables() {
             )
         `);
 
+        // Game Sessions Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_sessions (
+                id VARCHAR(50) PRIMARY KEY,
+                user_id INT NOT NULL,
+                bet_amount DECIMAL(10, 2) NOT NULL,
+                multiplier DECIMAL(10, 2) DEFAULT 0.00,
+                win_amount DECIMAL(10, 2) DEFAULT 0.00,
+                status VARCHAR(20) DEFAULT 'ACTIVE',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        `);
+
         // Settings Table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS settings (
@@ -268,8 +283,8 @@ app.get('/api/user/me', async (req, res) => {
     }
 });
 
-// WALLET: Sync Balance (From Game/Frontend)
-app.post('/api/wallet/sync', async (req, res) => {
+// GAME: Start Game
+app.post('/api/game/start', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
@@ -277,15 +292,101 @@ app.post('/api/wallet/sync', async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        const { balance, bonusBalance } = req.body;
+        const { betAmount } = req.body;
 
-        // Update user balance
-        await query('UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?', [balance, bonusBalance, decoded.id]);
+        if (!betAmount || betAmount <= 0) {
+            return res.status(400).json({ error: 'Valor da aposta inválido.' });
+        }
 
-        res.json({ success: true });
+        // Get user and check balance
+        const users = await query('SELECT * FROM users WHERE id = ?', [decoded.id]);
+        if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+        
+        const user = users[0];
+        const balance = parseFloat(user.balance);
+
+        if (balance < betAmount) {
+            return res.status(400).json({ error: 'Saldo insuficiente.' });
+        }
+
+        // Generate Game ID
+        const gameId = `GAME-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        // Debit Balance
+        await query('UPDATE users SET balance = balance - ? WHERE id = ?', [betAmount, decoded.id]);
+
+        // Create Game Session
+        await query(
+            'INSERT INTO game_sessions (id, user_id, bet_amount, status) VALUES (?, ?, ?, "ACTIVE")',
+            [gameId, decoded.id, betAmount]
+        );
+
+        // Log Transaction (Bet)
+        await query(
+            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "BET", ?, "COMPLETED", ?, NOW())',
+            [decoded.id, betAmount, JSON.stringify({ gameId })]
+        );
+
+        res.json({ success: true, gameId, newBalance: balance - betAmount });
     } catch (err) {
-        console.error("Wallet Sync Error", err);
-        res.status(500).json({ error: 'Erro ao sincronizar carteira.' });
+        console.error("Game Start Error", err);
+        res.status(500).json({ error: 'Erro ao iniciar jogo.' });
+    }
+});
+
+// GAME: End Game
+app.post('/api/game/end', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const { gameId, multiplier } = req.body;
+
+        if (!gameId) return res.status(400).json({ error: 'ID do jogo não fornecido.' });
+        if (multiplier < 0) return res.status(400).json({ error: 'Multiplicador inválido.' });
+
+        // Get Game Session
+        const sessions = await query('SELECT * FROM game_sessions WHERE id = ? AND user_id = ?', [gameId, decoded.id]);
+        if (sessions.length === 0) return res.status(404).json({ error: 'Sessão de jogo não encontrada.' });
+
+        const session = sessions[0];
+
+        if (session.status !== 'ACTIVE') {
+            return res.status(400).json({ error: 'Jogo já finalizado.' });
+        }
+
+        const betAmount = parseFloat(session.bet_amount);
+        const winAmount = betAmount * multiplier;
+        const status = winAmount > 0 ? 'COMPLETED' : 'CRASHED';
+
+        // Update Game Session
+        await query(
+            'UPDATE game_sessions SET multiplier = ?, win_amount = ?, status = ? WHERE id = ?',
+            [multiplier, winAmount, status, gameId]
+        );
+
+        // Credit Win if any
+        if (winAmount > 0) {
+            await query('UPDATE users SET balance = balance + ? WHERE id = ?', [winAmount, decoded.id]);
+            
+            // Log Transaction (Win)
+            await query(
+                'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "WIN", ?, "COMPLETED", ?, NOW())',
+                [decoded.id, winAmount, JSON.stringify({ gameId, multiplier })]
+            );
+        }
+
+        // Get updated balance
+        const updatedUser = await query('SELECT balance FROM users WHERE id = ?', [decoded.id]);
+        
+        res.json({ success: true, winAmount, newBalance: parseFloat(updatedUser[0].balance) });
+
+    } catch (err) {
+        console.error("Game End Error", err);
+        res.status(500).json({ error: 'Erro ao finalizar jogo.' });
     }
 });
 
@@ -386,6 +487,28 @@ app.get('/api/config', async (req, res) => {
     }
 });
 
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { password } = req.body || {};
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        if (!password || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Senha não fornecida.' });
+        }
+        if (password !== adminPassword) {
+            return res.status(401).json({ error: 'Senha de administrador incorreta.' });
+        }
+        const token = jwt.sign(
+            { role: 'admin', username: process.env.ADMIN_USERNAME || 'admin' },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '24h' }
+        );
+        res.json({ token });
+    } catch (err) {
+        console.error("Admin Login Error", err);
+        res.status(500).json({ error: 'Erro ao autenticar administrador.' });
+    }
+});
+
 // CONFIG: Get Config
 app.get('/api/admin/config', async (req, res) => {
     const authHeader = req.headers.authorization;
@@ -393,7 +516,15 @@ app.get('/api/admin/config', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
 
         const settings = await query('SELECT * FROM settings');
         const config = {};
@@ -421,7 +552,15 @@ app.post('/api/admin/config', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
 
         const config = req.body;
         const values = Object.entries(config).map(([key, value]) => {
@@ -819,72 +958,8 @@ app.post('/api/affiliates/claim', async (req, res) => {
     }
 });
 
-// GAME: Process Result (Win/Loss + RevShare)
-app.post('/api/game/result', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
-
-    const token = authHeader.split(' ')[1];
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        const { betAmount, winAmount, source } = req.body;
-
-        const user = (await query('SELECT * FROM users WHERE id = ?', [decoded.id]))[0];
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
-
-        // Update Balance
-        let newBalance = parseFloat(user.balance);
-        let newBonus = parseFloat(user.bonusBalance);
-
-        if (source === 'REAL') {
-            newBalance = newBalance - betAmount + winAmount;
-        } else {
-            newBonus = newBonus - betAmount + winAmount;
-        }
-
-        await query('UPDATE users SET balance = ?, bonusBalance = ? WHERE id = ?', [newBalance, newBonus, decoded.id]);
-
-        // Log Transactions
-        // BET
-        await query(
-            'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "BET", ?, "COMPLETED", ?, NOW())',
-            [decoded.id, betAmount, JSON.stringify({ source, winAmount })]
-        );
-
-        // WIN (if any)
-        if (winAmount > 0) {
-            await query(
-                'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "WIN", ?, "COMPLETED", ?, NOW())',
-                [decoded.id, winAmount, JSON.stringify({ source, betAmount })]
-            );
-        } else if (source === 'REAL' && user.invitedBy) {
-            // REVSHARE LOGIC (Loss)
-            // Get settings
-            const settings = await query('SELECT * FROM settings');
-            const config = {};
-            settings.forEach(s => config[s.setting_key] = s.setting_value);
-
-            const revSharePct = parseFloat(config.realRevShare || 20);
-            const commission = betAmount * (revSharePct / 100);
-
-            if (commission > 0) {
-                const referrer = await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]);
-                if (referrer.length > 0) {
-                    await query(
-                        'UPDATE users SET revshare_earnings = revshare_earnings + ? WHERE id = ?',
-                        [commission, referrer[0].id]
-                    );
-                }
-            }
-        }
-
-        res.json({ success: true, balance: newBalance, bonusBalance: newBonus });
-    } catch (err) {
-        console.error("Game Result Error", err);
-        res.status(500).json({ error: 'Erro ao processar jogo.' });
-    }
-});
+// GAME: Process Result (REMOVED FOR SECURITY)
+// Use /api/game/start and /api/game/end instead
 
 // ADMIN ROUTES
 app.get('/api/admin/users', async (req, res) => {
@@ -893,7 +968,15 @@ app.get('/api/admin/users', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
 
         const users = await query('SELECT * FROM users ORDER BY created_at DESC');
 
@@ -922,7 +1005,15 @@ app.put('/api/admin/users/:id', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
         const { id } = req.params;
         const { balance, bonusBalance, isVip, vipExpiry, inventory } = req.body;
 
@@ -945,7 +1036,15 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
 
         const { id } = req.params;
 
@@ -969,7 +1068,15 @@ app.get('/api/admin/stats', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        } catch (e) {
+            return res.status(401).json({ error: 'Token inválido.' });
+        }
+        if (!decoded || typeof decoded !== 'object' || decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
 
         const [totalUsers] = await query('SELECT COUNT(*) as count FROM users');
         const [totalDeposits] = await query('SELECT SUM(amount) as total FROM transactions WHERE type = "DEPOSIT" AND status = "COMPLETED"');

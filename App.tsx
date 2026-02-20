@@ -27,6 +27,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const path = window.location.pathname;
     const adminSession = localStorage.getItem('snakebet_admin_session');
+    const adminToken = localStorage.getItem('snakebet_admin_token');
 
     // Fetch global config from server on mount (safe merge - never overwrites with partial data)
     const configFetch = api.getPublicConfig()
@@ -58,7 +59,11 @@ const App: React.FC = () => {
     const minLoadingTime = new Promise(resolve => setTimeout(resolve, 2500));
 
     if (adminSession === 'true') {
-      setCurrentScreen(AppScreen.ADMIN);
+      if (adminToken) {
+        setCurrentScreen(AppScreen.ADMIN);
+      } else {
+        setCurrentScreen(AppScreen.ADMIN_LOGIN);
+      }
       setIsLoading(false);
     } else if (path === '/admin') {
       setCurrentScreen(AppScreen.ADMIN_LOGIN);
@@ -186,35 +191,10 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Sync data to local storage
+  // Sincronizar estado do usuário com localStorage
   useEffect(() => {
     if (user) {
-      // Local Backup
-      localStorage.setItem(`snakebet_data_${user.username}`, JSON.stringify({
-        balance: user.balance,
-        bonusBalance: user.bonusBalance,
-        isVip: user.isVip,
-        vipExpiry: user.vipExpiry,
-        dailyBonusClaims: user.dailyBonusClaims,
-        boxTracker: user.boxTracker,
-        transactions: user.transactions,
-        rollover: user.rollover,
-        lastDailyBonus: user.lastDailyBonus,
-        consecutiveFreeClaims: user.consecutiveFreeClaims,
-        totalDeposited: user.totalDeposited,
-        inventory: user.inventory,
-        referrals: user.referrals,
-        invitedBy: user.invitedBy,
-        affiliateEarnings: user.affiliateEarnings
-      }));
-
-      // Remote Sync (Fire and Forget)
-      // Only sync balance updates to server if token exists
-      const token = localStorage.getItem('snakebet_token');
-      if (token) {
-        api.updateWallet(user.balance, user.bonusBalance)
-          .catch(err => console.error("Background sync failed", err));
-      }
+      localStorage.setItem('snakebet_user', JSON.stringify(user));
     }
   }, [user]);
 
@@ -320,6 +300,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('snakebet_admin_session');
+    localStorage.removeItem('snakebet_admin_token');
     localStorage.removeItem('snakebet_token');
     setUser(null);
     setBetHistory([]);
@@ -414,18 +395,6 @@ const App: React.FC = () => {
         }
       }
     }
-
-    // Process Game Result on Server (Sync Balance + RevShare)
-    api.processGameResult(activeBet, winAmount, activeBetSource)
-      .then(data => {
-        if (data && data.success) {
-          console.log("Game result synced:", data);
-          // Optional: ensure client balance matches server
-          // newUser.balance = data.balance;
-          // newUser.bonusBalance = data.bonusBalance;
-        }
-      })
-      .catch(err => console.error("Failed to sync game result", err));
 
     handleUpdateUser(newUser);
     setCurrentScreen(AppScreen.GAME_OVER);

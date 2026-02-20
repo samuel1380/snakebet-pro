@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/Button';
 import { Point, Direction, GRID_SIZE, GameConfig, Difficulty, DIFFICULTY_CONFIG } from '../../types';
 import { useInterval } from '../../hooks/useInterval';
+import { api } from '../../services/api';
 import { Coins, AlertOctagon, Zap, ArrowBigUp, ArrowBigDown, ArrowBigLeft, ArrowBigRight, Skull, Ghost, Bomb, Flame, Shield, Magnet, Timer, Sword, XCircle, HeartPulse, Wallet, Heart, CheckCircle2 } from 'lucide-react';
 
 interface GameScreenProps {
@@ -34,6 +35,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
   // Phase Control
   const [phase, setPhase] = useState<GamePhase>('LOBBY');
   const [lobbyTimer, setLobbyTimer] = useState(10); // Alterado para 10 segundos
+  const [gameId, setGameId] = useState<string | null>(null);
   
   // Loadout State (Pre-Game Selection)
   const [equippedItems, setEquippedItems] = useState({
@@ -148,19 +150,44 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
       }
   };
 
-  const startGame = () => {
-      // Consume items based on selection
-      if (equippedItems.shield) onConsumeItem('SHIELD');
-      if (equippedItems.magnet) onConsumeItem('MAGNET');
+  const startGame = async () => {
+      if (phase === 'PLAYING') return;
 
-      // Setup Initial Game State
-      if (equippedItems.magnet) {
-          setMagnetActive(true);
-          setMagnetTimer(100); // 10 seconds
+      try {
+        const response = await api.startGame(betAmount);
+        setGameId(response.gameId);
+
+        // Consume items based on selection
+        if (equippedItems.shield) onConsumeItem('SHIELD');
+        if (equippedItems.magnet) onConsumeItem('MAGNET');
+
+        // Setup Initial Game State
+        if (equippedItems.magnet) {
+            setMagnetActive(true);
+            setMagnetTimer(100); // 10 seconds
+        }
+
+        setPhase('PLAYING');
+        initGameBoard();
+      } catch (err: any) {
+        console.error("Start Game Error", err);
+        alert(err.message || "Erro ao iniciar partida.");
+        onCancelMatch();
       }
+  };
 
-      setPhase('PLAYING');
-      initGameBoard();
+  const finishGameSession = async (multiplier: number) => {
+      if (!gameId) {
+          onGameOver(0);
+          return;
+      }
+      try {
+          const res = await api.endGame(gameId, multiplier);
+          onGameOver(res.winAmount);
+      } catch (err) {
+          console.error("End Game Error", err);
+          onGameOver(0);
+      }
   };
 
   const handleRevive = () => {
@@ -316,7 +343,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
 
   const handleCashOut = () => {
     setPhase('CRASHED'); // Stop loop essentially
-    onGameOver(config.potentialWin + config.betAmount);
+    const totalWin = config.potentialWin + config.betAmount;
+    const finalMultiplier = totalWin / config.betAmount;
+    finishGameSession(finalMultiplier);
   };
 
   const gameOver = (reason: 'WALL' | 'SELF' | 'BOT' | 'BOMB'): boolean => {
@@ -339,7 +368,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
     } else {
         setPhase('CRASHED');
         setTimeout(() => {
-            onGameOver(0);
+            finishGameSession(0);
         }, 2000);
     }
     

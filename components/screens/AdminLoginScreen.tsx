@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface AdminLoginScreenProps {
   onAdminLogin: () => void;
@@ -13,19 +14,24 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({ onAdminLogin
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAdminSubmit = (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
       setLoading(true);
 
-      setTimeout(() => {
-          if (adminPassword === 'admin123') {
-              onAdminLogin();
-          } else {
-              setError("Senha de administrador incorreta.");
+      try {
+          const data = await api.adminLogin(adminPassword);
+          if (!data?.token) {
+              setError("Falha ao autenticar administrador.");
               setLoading(false);
+              return;
           }
-      }, 1000);
+          localStorage.setItem('snakebet_admin_token', data.token);
+          onAdminLogin();
+      } catch (err: any) {
+          setError(err?.error || err?.message || "Falha ao autenticar administrador.");
+          setLoading(false);
+      }
   };
 
   return (
