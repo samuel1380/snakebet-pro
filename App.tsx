@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { User, AppScreen, BetRecord, Difficulty } from './types';
-import { AuthScreen } from './components/screens/AuthScreen';
-import { DashboardScreen } from './components/screens/DashboardScreen';
-import { GameScreen } from './components/screens/GameScreen';
-import { GameOverScreen } from './components/screens/GameOverScreen';
-import { AdminScreen } from './components/screens/AdminScreen';
-import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
 import { LoadingScreen } from './components/screens/LoadingScreen';
+import { getAppConfig, saveAppConfig } from './utils/config';
+import { api } from './services/api';
+
+const AuthScreen = lazy(() => import('./components/screens/AuthScreen').then(module => ({ default: module.AuthScreen })));
+const DashboardScreen = lazy(() => import('./components/screens/DashboardScreen').then(module => ({ default: module.DashboardScreen })));
+const GameScreen = lazy(() => import('./components/screens/GameScreen').then(module => ({ default: module.GameScreen })));
+const GameOverScreen = lazy(() => import('./components/screens/GameOverScreen').then(module => ({ default: module.GameOverScreen })));
+const AdminScreen = lazy(() => import('./components/screens/AdminScreen').then(module => ({ default: module.AdminScreen })));
+const AdminLoginScreen = lazy(() => import('./components/screens/AdminLoginScreen').then(module => ({ default: module.AdminLoginScreen })));
 import { getAppConfig, saveAppConfig } from './utils/config';
 import { api } from './services/api';
 
@@ -410,18 +413,19 @@ const App: React.FC = () => {
       return <LoadingScreen />;
     }
 
+    let ScreenComponent;
     switch (currentScreen) {
       case AppScreen.AUTH:
-        return <AuthScreen onLogin={handleLogin} />;
-
+        ScreenComponent = <AuthScreen onLogin={handleLogin} />;
+        break;
       case AppScreen.ADMIN_LOGIN:
-        return <AdminLoginScreen onAdminLogin={handleAdminLogin} onBack={() => setCurrentScreen(AppScreen.AUTH)} />;
-
+        ScreenComponent = <AdminLoginScreen onAdminLogin={handleAdminLogin} onBack={() => setCurrentScreen(AppScreen.AUTH)} />;
+        break;
       case AppScreen.ADMIN:
-        return <AdminScreen onLogout={handleLogout} />;
-
+        ScreenComponent = <AdminScreen onLogout={handleLogout} />;
+        break;
       case AppScreen.DASHBOARD:
-        return user ? (
+        ScreenComponent = user ? (
           <DashboardScreen
             user={user}
             betHistory={betHistory}
@@ -430,9 +434,9 @@ const App: React.FC = () => {
             onStartGame={handleStartGame}
           />
         ) : null;
-
+        break;
       case AppScreen.GAME:
-        return user ? (
+        ScreenComponent = user ? (
           <GameScreen
             betAmount={activeBet}
             difficulty={activeDifficulty}
@@ -443,9 +447,9 @@ const App: React.FC = () => {
             onGameOver={handleGameOver}
           />
         ) : null;
-
+        break;
       case AppScreen.GAME_OVER:
-        return (
+        ScreenComponent = (
           <GameOverScreen
             winAmount={lastWin}
             betAmount={activeBet}
@@ -454,10 +458,16 @@ const App: React.FC = () => {
             onHome={() => setCurrentScreen(AppScreen.DASHBOARD)}
           />
         );
-
+        break;
       default:
-        return <div>Error: Unknown screen</div>;
+        ScreenComponent = <div>Error: Unknown screen</div>;
     }
+
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        {ScreenComponent}
+      </Suspense>
+    );
   };
 
   return (
