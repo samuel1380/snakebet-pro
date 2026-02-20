@@ -715,6 +715,9 @@ app.post('/api/deposit', async (req, res) => {
 
     } catch (err) {
         console.error("Deposit Error", err);
+        if (err.name === 'TokenExpiredError' || err.message === 'jwt expired') {
+            return res.status(401).json({ error: 'Sua sessão expirou. Atualize a página e faça login novamente.' });
+        }
         res.status(500).json({ error: err.message || 'Erro ao criar depósito.' });
     }
 });
@@ -1031,6 +1034,9 @@ app.post('/api/withdraw', async (req, res) => {
 
     } catch (err) {
         console.error("Withdraw Error", err);
+        if (err.name === 'TokenExpiredError' || err.message === 'jwt expired') {
+            return res.status(401).json({ error: 'Sua sessão expirou. Atualize a página e faça login novamente.' });
+        }
         res.status(500).json({ error: 'Erro ao solicitar saque.' });
     }
 });
