@@ -657,14 +657,14 @@ app.post('/api/deposit', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Basic ${authString}`,
+                'Authorization': `Bearer ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
 
         console.log('PagViva Deposit Request:', {
             url: `https://${options.hostname}${options.path}`,
-            headers: { ...options.headers, 'Authorization': 'Basic [REDACTED]' },
+            headers: { ...options.headers, 'Authorization': 'Bearer [REDACTED]' },
             payload: JSON.parse(payload)
         });
 
@@ -755,7 +755,7 @@ app.get('/api/deposit/status/:id', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Basic ${authString}`,
+                'Authorization': `Bearer ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
@@ -825,7 +825,7 @@ app.post('/api/deposit/confirm', async (req, res) => {
                 hostname: 'pagviva.com',
                 path: `/api/transaction/${txId}`,
                 method: 'GET',
-                headers: { 'Authorization': `Basic ${authString}`, 'X-API-KEY': pagVivaConfig.apiKey || '' }
+                headers: { 'Authorization': `Bearer ${authString}`, 'X-API-KEY': pagVivaConfig.apiKey || '' }
             }, (resData) => {
                 let data = '';
                 resData.on('data', d => data += d);
@@ -964,14 +964,14 @@ app.post('/api/withdraw', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Basic ${authString}`,
+                'Authorization': `Bearer ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
 
         console.log('PagViva Withdraw Request:', {
             url: `https://${options.hostname}${options.path}`,
-            headers: { ...options.headers, 'Authorization': 'Basic [REDACTED]' },
+            headers: { ...options.headers, 'Authorization': 'Bearer [REDACTED]' },
             payload: JSON.parse(payload)
         });
 
@@ -1264,7 +1264,7 @@ app.post('/api/callback', async (req, res) => {
                 hostname: 'pagviva.com',
                 path: `/api/transaction/${txId}`,
                 method: 'GET',
-                headers: { 'Authorization': `Basic ${authString}`, 'X-API-KEY': pagVivaConfig.apiKey || '' }
+                headers: { 'Authorization': `Bearer ${authString}`, 'X-API-KEY': pagVivaConfig.apiKey || '' }
             }, (resData) => {
                 let data = '';
                 resData.on('data', d => data += d);
