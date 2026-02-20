@@ -616,8 +616,16 @@ app.post('/api/deposit', async (req, res) => {
             }
         }
 
-        if (!pagVivaConfig || !pagVivaConfig.token) {
-            return res.status(500).json({ error: 'Credenciais PagVIVA não configuradas no servidor.' });
+        if (!pagVivaConfig || !pagVivaConfig.token || !pagVivaConfig.secret) {
+            console.error("PagViva config missing or incomplete:", {
+                hasConfig: !!pagVivaConfig,
+                hasToken: !!pagVivaConfig?.token,
+                hasSecret: !!pagVivaConfig?.secret,
+                hasApiKey: !!pagVivaConfig?.apiKey
+            });
+            return res.status(500).json({ 
+                error: 'Credenciais PagVIVA não configuradas no servidor. Verifique se Token, Secret e API Key estão preenchidos no painel administrativo.' 
+            });
         }
 
         // Call PagViva API
@@ -642,10 +650,16 @@ app.post('/api/deposit', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Bearer ${authString}`,
+                'Authorization': `Basic ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
+
+        console.log('PagViva Deposit Request:', {
+            url: `https://${options.hostname}${options.path}`,
+            headers: { ...options.headers, 'Authorization': 'Basic [REDACTED]' },
+            payload: JSON.parse(payload)
+        });
 
         const apiRequest = https.request(options, (apiRes) => {
             let data = '';
@@ -655,22 +669,38 @@ app.post('/api/deposit', async (req, res) => {
             });
 
             apiRes.on('end', () => {
+                console.log('PagViva Deposit Response:', {
+                    statusCode: apiRes.statusCode,
+                    headers: apiRes.headers,
+                    body: data
+                });
+
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
                         const jsonResponse = JSON.parse(data);
                         res.json(jsonResponse);
                     } catch (e) {
+                        console.error('Error parsing PagViva response:', e, data);
                         res.status(500).json({ error: 'Erro ao processar resposta do pagamento.' });
                     }
                 } else {
-                    res.status(apiRes.statusCode).json({ error: `Erro PagVIVA: ${data}` });
+                    let errorMessage = `Erro PagVIVA (${apiRes.statusCode}): ${data}`;
+                    try {
+                        const errorJson = JSON.parse(data);
+                        if (errorJson.message) errorMessage = errorJson.message;
+                        else if (errorJson.error) errorMessage = errorJson.error;
+                    } catch (e) {
+                        // Keep original message if parsing fails
+                    }
+                    console.error('PagViva Deposit Error:', errorMessage);
+                    res.status(apiRes.statusCode || 500).json({ error: errorMessage });
                 }
             });
         });
 
         apiRequest.on('error', (e) => {
-            console.error(e);
-            res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
+            console.error('PagViva Request Error:', e);
+            res.status(500).json({ error: `Erro de conexão com gateway de pagamento: ${e.message}` });
         });
 
         apiRequest.write(payload);
@@ -704,7 +734,8 @@ app.get('/api/deposit/status/:id', async (req, res) => {
             }
         }
 
-        if (!pagVivaConfig || !pagVivaConfig.token) {
+        if (!pagVivaConfig || !pagVivaConfig.token || !pagVivaConfig.secret) {
+            console.error("PagViva config missing or incomplete for status check");
             return res.status(500).json({ error: 'Credenciais PagVIVA não configuradas.' });
         }
 
@@ -717,7 +748,7 @@ app.get('/api/deposit/status/:id', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Bearer ${authString}`,
+                'Authorization': `Basic ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
@@ -731,16 +762,18 @@ app.get('/api/deposit/status/:id', async (req, res) => {
                         const jsonResponse = JSON.parse(data);
                         res.json(jsonResponse);
                     } catch (e) {
-                        res.status(500).json({ error: 'Erro ao processar resposta.' });
+                        console.error('Error parsing PagViva status response:', e, data);
+                        res.json({ status: 'PENDING' });
                     }
                 } else {
+                    console.error('PagViva Status Error:', apiRes.statusCode, data);
                     res.json({ status: 'PENDING' }); // Default to PENDING on error to avoid breaking flow
                 }
             });
         });
 
         apiRequest.on('error', (e) => {
-            console.error(e);
+            console.error('PagViva Status Request Error:', e);
             res.json({ status: 'PENDING' });
         });
 
@@ -846,8 +879,11 @@ app.post('/api/withdraw', async (req, res) => {
             }
         }
 
-        if (!pagVivaConfig || !pagVivaConfig.token) {
-            return res.status(500).json({ error: 'Credenciais de saque não configuradas.' });
+        if (!pagVivaConfig || !pagVivaConfig.token || !pagVivaConfig.secret) {
+            console.error("PagViva config missing or incomplete for withdraw");
+            return res.status(500).json({ 
+                error: 'Credenciais de saque não configuradas. Verifique se Token, Secret e API Key estão preenchidos no painel administrativo.' 
+            });
         }
 
         // Deduct Balance First (Pessimistic Locking ideally, but simple update here)
@@ -872,15 +908,27 @@ app.post('/api/withdraw', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Bearer ${authString}`,
+                'Authorization': `Basic ${authString}`,
                 'X-API-KEY': pagVivaConfig.apiKey || ''
             }
         };
+
+        console.log('PagViva Withdraw Request:', {
+            url: `https://${options.hostname}${options.path}`,
+            headers: { ...options.headers, 'Authorization': 'Basic [REDACTED]' },
+            payload: JSON.parse(payload)
+        });
 
         const apiRequest = https.request(options, (apiRes) => {
             let data = '';
             apiRes.on('data', (chunk) => data += chunk);
             apiRes.on('end', async () => {
+                console.log('PagViva Withdraw Response:', {
+                    statusCode: apiRes.statusCode,
+                    headers: apiRes.headers,
+                    body: data
+                });
+
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
                         const jsonResponse = JSON.parse(data);
@@ -893,23 +941,33 @@ app.post('/api/withdraw', async (req, res) => {
 
                         res.json(jsonResponse);
                     } catch (e) {
-                        // Refund on error? For now, just log
-                        console.error("Withdraw Parse Error", e);
+                        // Refund on error
+                        console.error("Withdraw Parse Error", e, data);
+                        await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]).catch(console.error);
                         res.status(500).json({ error: 'Erro ao processar resposta do saque.' });
                     }
                 } else {
                     // Refund user
-                    await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
-                    res.status(apiRes.statusCode).json({ error: `Erro PagVIVA: ${data}` });
+                    let errorMessage = `Erro PagVIVA (${apiRes.statusCode}): ${data}`;
+                    try {
+                        const errorJson = JSON.parse(data);
+                        if (errorJson.message) errorMessage = errorJson.message;
+                        else if (errorJson.error) errorMessage = errorJson.error;
+                    } catch (e) {
+                        // Keep original message
+                    }
+                    console.error('PagViva Withdraw Error:', errorMessage);
+                    await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]).catch(console.error);
+                    res.status(apiRes.statusCode || 500).json({ error: errorMessage });
                 }
             });
         });
 
         apiRequest.on('error', async (e) => {
-            console.error(e);
+            console.error('PagViva Withdraw Request Error:', e);
             // Refund user
-            await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]);
-            res.status(500).json({ error: 'Erro de conexão com gateway de pagamento.' });
+            await query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, decoded.id]).catch(console.error);
+            res.status(500).json({ error: `Erro de conexão com gateway de pagamento: ${e.message}` });
         });
 
         apiRequest.write(payload);
