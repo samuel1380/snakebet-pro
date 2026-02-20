@@ -600,8 +600,15 @@ app.post('/api/deposit', async (req, res) => {
         // Update CPF if provided and different
         let userCpf = user.cpf;
         if (cpf && cpf !== user.cpf) {
-            await query('UPDATE users SET cpf = ? WHERE id = ?', [cpf, decoded.id]);
-            userCpf = cpf;
+            try {
+                await query('UPDATE users SET cpf = ? WHERE id = ?', [cpf, decoded.id]);
+                userCpf = cpf;
+            } catch (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(400).json({ error: 'Este CPF já está sendo usado por outra conta. Por favor, use outro CPF ou recupere sua conta antiga.' });
+                }
+                throw err;
+            }
         }
 
         // Get PagViva Config from DB
@@ -708,7 +715,7 @@ app.post('/api/deposit', async (req, res) => {
 
     } catch (err) {
         console.error("Deposit Error", err);
-        res.status(500).json({ error: 'Erro ao criar depósito.' });
+        res.status(500).json({ error: err.message || 'Erro ao criar depósito.' });
     }
 });
 
