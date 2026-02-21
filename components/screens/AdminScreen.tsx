@@ -211,8 +211,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
     const withdrawalsList = allTransactions.filter(t => t.type === 'WITHDRAW');
 
     // Dashboard Calculations
-    const totalDepositsValue = depositsList.filter(d => d.status === 'COMPLETED').reduce((sum, d) => sum + d.amount, 0);
-    const totalWithdrawalsValue = withdrawalsList.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + w.amount, 0);
+    const allTransactionsValues = (users || []).flatMap(user =>
+        (user.transactions || []).map(t => ({ ...t, username: user.username }))
+    ).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    const depositsListCurrent = allTransactionsValues.filter(t => t.type === 'DEPOSIT');
+    const withdrawalsListCurrent = allTransactionsValues.filter(t => t.type === 'WITHDRAW');
+
+    const totalDepositsValue = depositsListCurrent.filter(d => d.status === 'COMPLETED').reduce((sum, d) => sum + (d.amount || 0), 0);
+    const totalWithdrawalsValue = withdrawalsListCurrent.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + (w.amount || 0), 0);
     const netProfitValue = totalDepositsValue - totalWithdrawalsValue;
 
     const handleUpdateTransactionStatus = (username: string, transactionId: string, newStatus: 'COMPLETED' | 'REJECTED') => {
