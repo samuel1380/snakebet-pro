@@ -567,17 +567,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
 
                 {/* Animated Background Mesh */}
                 <div className="absolute inset-0 z-0 overflow-hidden">
-                    <div className="absolute top-[-20%] left-[-10%] w-[140%] h-[140%] bg-[radial-gradient(circle_at_50%_50%,_rgba(4,217,255,0.05)_0%,_transparent_60%)] animate-[spin_60s_linear_infinite]"></div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[2px] bg-gradient-to-r from-transparent via-[#0cf] to-transparent opacity-20 blur-sm"></div>
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20 mix-blend-overlay"></div>
+                    <div className="absolute top-[-20%] left-[-10%] w-[140%] h-[140%] bg-[radial-gradient(circle_at_50%_50%,_rgba(57,255,20,0.05)_0%,_transparent_60%)] animate-[spin_60s_linear_infinite]"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[2px] bg-gradient-to-r from-transparent via-[#39ff14] to-transparent opacity-20 blur-sm"></div>
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZHRoPSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20 mix-blend-overlay"></div>
                 </div>
 
                 <div className="z-10 w-full max-w-md space-y-8 animate-in slide-in-from-bottom flex flex-col items-center duration-500">
 
                     {/* Timer Section */}
                     <div className="text-center relative">
-                        <div className="absolute inset-0 bg-neon-blue blur-[60px] opacity-20 rounded-full"></div>
-                        <h2 className="text-[#0cf] font-black uppercase tracking-[0.3em] text-[10px] mb-3 drop-shadow-[0_0_8px_rgba(0,204,255,0.8)]">Preparando Arena</h2>
+                        <div className="absolute inset-0 bg-[#39ff14] blur-[60px] opacity-20 rounded-full"></div>
+                        <h2 className="text-[#39ff14] font-black uppercase tracking-[0.3em] text-[10px] mb-3 drop-shadow-[0_0_8px_rgba(57,255,20,0.8)]">Preparando Arena</h2>
                         <div className="text-9xl font-black font-display text-transparent bg-clip-text bg-gradient-to-b from-white to-[#888] tracking-tighter drop-shadow-2xl">
                             {lobbyTimer}
                         </div>
@@ -589,7 +589,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
 
                         <h3 className="text-white/90 font-black uppercase tracking-wider text-sm mb-4 flex items-center gap-2 justify-center">
-                            <Sword size={16} className="text-[#0cf]" /> Seus Equipamentos
+                            <Sword size={16} className="text-[#39ff14]" /> Seus Equipamentos
                         </h3>
 
                         <div className="flex flex-col gap-3">
@@ -677,11 +677,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                     <div className="w-full flex flex-col gap-3">
                         <button
                             onClick={startGame}
-                            className="w-full relative group overflow-hidden rounded-2xl p-0.5 shadow-[0_0_30px_rgba(4,217,255,0.3)] transition-transform active:scale-95"
+                            className="w-full relative group overflow-hidden rounded-2xl p-0.5 shadow-[0_0_30px_rgba(57,255,20,0.3)] transition-transform active:scale-95"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#0cf] via-[#3b82f6] to-[#0cf] animate-[gradient_3s_linear_infinite] opacity-100"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#39ff14] via-[#22c55e] to-[#39ff14] animate-[gradient_3s_linear_infinite] opacity-100"></div>
                             <div className="relative bg-[#070b14] w-full h-full rounded-[14px] flex items-center justify-center py-4 group-hover:bg-transparent transition-colors">
-                                <span className="font-black font-display text-xl tracking-widest text-[#0cf] group-hover:text-black transition-colors z-10">
+                                <span className="font-black font-display text-xl tracking-widest text-[#39ff14] group-hover:text-black transition-colors z-10">
                                     ENTRAR NA ARENA
                                 </span>
                             </div>
