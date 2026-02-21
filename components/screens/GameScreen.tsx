@@ -3,7 +3,7 @@ import { Button } from '../ui/Button';
 import { Point, Direction, GRID_SIZE, GameConfig, Difficulty, DIFFICULTY_CONFIG } from '../../types';
 import { useInterval } from '../../hooks/useInterval';
 import { api } from '../../services/api';
-import { Coins, AlertOctagon, Zap, ArrowBigUp, ArrowBigDown, ArrowBigLeft, ArrowBigRight, Skull, Ghost, Bomb, Flame, Shield, Magnet, Timer, Sword, XCircle, HeartPulse, Wallet, Heart, CheckCircle2 } from 'lucide-react';
+import { Coins, AlertOctagon, Zap, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Skull, Ghost, Bomb, Flame, Shield, Magnet, Timer, Sword, XCircle, HeartPulse, Wallet, Heart, CheckCircle2 } from 'lucide-react';
 
 interface GameScreenProps {
     betAmount: number;
@@ -1010,14 +1010,44 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                     )}
                 </Button>
 
-                {/* Improved Mobile Controls */}
-                <div className="grid grid-cols-3 gap-3 mx-auto sm:hidden w-full max-w-[240px]">
-                    <div />
-                    <ControlBtn icon={<ArrowBigUp />} onClick={() => handleDirection(Direction.UP)} />
-                    <div />
-                    <ControlBtn icon={<ArrowBigLeft />} onClick={() => handleDirection(Direction.LEFT)} />
-                    <ControlBtn icon={<ArrowBigDown />} onClick={() => handleDirection(Direction.DOWN)} />
-                    <ControlBtn icon={<ArrowBigRight />} onClick={() => handleDirection(Direction.RIGHT)} />
+                {/* Mobile Circular D-Pad */}
+                <div className="relative mx-auto sm:hidden w-48 h-48 bg-[#111113]/80 rounded-full border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-lg flex items-center justify-center p-2 mb-2 pointer-events-auto">
+                    {/* UP */}
+                    <button
+                        className="absolute top-1 left-1/2 -translate-x-1/2 w-16 h-14 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-t-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.UP); }}
+                    >
+                        <ChevronUp size={32} className="drop-shadow-md pb-2 text-gray-300" />
+                    </button>
+
+                    {/* DOWN */}
+                    <button
+                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-16 h-14 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-b-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.DOWN); }}
+                    >
+                        <ChevronDown size={32} className="drop-shadow-md pt-2 text-gray-300" />
+                    </button>
+
+                    {/* LEFT */}
+                    <button
+                        className="absolute left-1 top-1/2 -translate-y-1/2 w-14 h-16 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-l-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.LEFT); }}
+                    >
+                        <ChevronLeft size={32} className="drop-shadow-md pr-2 text-gray-300" />
+                    </button>
+
+                    {/* RIGHT */}
+                    <button
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-14 h-16 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-r-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.RIGHT); }}
+                    >
+                        <ChevronRight size={32} className="drop-shadow-md pl-2 text-gray-300" />
+                    </button>
+
+                    {/* Center Core */}
+                    <div className="w-16 h-16 bg-[#09090b] rounded-full shadow-[inset_0_4px_15px_rgba(0,0,0,0.8)] flex items-center justify-center relative z-0 border border-white/10">
+                        <div className="w-6 h-6 bg-neon-green/10 rounded-full shadow-[0_0_20px_rgba(57,255,20,0.4)] border border-neon-green/20"></div>
+                    </div>
                 </div>
 
                 <p className="text-center text-gray-500 text-[10px] hidden sm:block uppercase tracking-widest mt-2 animate-pulse">
