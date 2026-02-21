@@ -1157,14 +1157,24 @@ app.get('/api/admin/users', async (req, res) => {
 
         const users = await query('SELECT * FROM users ORDER BY created_at DESC');
 
-        // Enhance users with referral counts
         const enhancedUsers = await Promise.all(users.map(async (u) => {
             const referralCount = await query('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?', [u.id]);
+            const transactions = await query('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC', [u.id]);
+
             return {
                 ...u,
+                username: u.username || `User_${u.id}`,
                 referralCount: referralCount[0].count,
-                balance: parseFloat(u.balance),
-                bonusBalance: parseFloat(u.bonusBalance)
+                balance: parseFloat(u.balance) || 0,
+                bonusBalance: parseFloat(u.bonusBalance) || 0,
+                totalDeposited: parseFloat(u.totalDeposited) || 0,
+                transactions: transactions.map(t => ({
+                    id: t.id.toString(),
+                    type: t.type,
+                    amount: parseFloat(t.amount) || 0,
+                    status: t.status,
+                    timestamp: new Date(t.created_at).getTime()
+                }))
             };
         }));
 

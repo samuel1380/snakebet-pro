@@ -200,7 +200,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
     };
 
     const filteredUsers = users.filter(u =>
-        u.username.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.username || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
 
     const allTransactions = users.flatMap(user =>
@@ -470,10 +470,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                                 <td className="p-4 pl-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full bg-[#1a1a1c] flex items-center justify-center border border-white/10 text-sm font-bold text-gray-300">
-                                                            {user.username.charAt(0).toUpperCase()}
+                                                            {(user.username || '?').charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <div className="font-bold text-white text-sm">{user.username}</div>
+                                                            <div className="font-bold text-white text-sm">{user.username || `User #${user.id}`}</div>
                                                             <div className="text-xs text-gray-600">ID: #{user.id}</div>
                                                         </div>
                                                     </div>
