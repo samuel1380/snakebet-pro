@@ -5,7 +5,7 @@ import {
     Users, DollarSign, Crown, Trash2, Edit, Save, X, LogOut,
     Search, Settings, BarChart3, LayoutDashboard,
     Menu, Bell, ChevronDown, ArrowUpRight, ArrowDownRight, Wallet, History, CreditCard,
-    ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, ShoppingBag, Banknote
+    Shield, ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, ShoppingBag, Banknote
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { getAppConfig, AppConfig, DEFAULT_CONFIG } from '../../utils/config';
