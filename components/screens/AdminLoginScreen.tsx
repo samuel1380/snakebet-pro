@@ -141,5 +141,6 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({ onAdminLogin
           </div>
         </div>
       </div>
-      );
+    </div>
+  );
 };
