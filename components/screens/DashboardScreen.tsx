@@ -867,41 +867,41 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
             {/* DYNAMIC NOTIFICATION POPUP */}
             {showStoreNotification && !bonusReward && !isOpeningBox && !showWithdrawCelebration && (
-                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[90] w-[90%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-500">
-                    <div className={`bg-gradient-to-r ${notificationType === 'BONUS' ? 'from-gray-900 to-black border-neon-purple/50 shadow-[0_0_30px_rgba(168,85,247,0.4)]' : 'from-gray-900 to-black border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.4)]'} border p-4 rounded-2xl flex items-center justify-between gap-4 relative overflow-hidden`}>
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-[400px] animate-in slide-in-from-top-12 fade-in duration-500 pointer-events-auto">
+                    <div className="bg-[#111827]/95 backdrop-blur-xl border border-white/10 rounded-[20px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] flex items-center p-3 gap-3">
 
-                        {/* Background Pulse */}
-                        <div className={`absolute inset-0 ${notificationType === 'BONUS' ? 'bg-neon-purple/10' : 'bg-blue-500/10'} animate-pulse`}></div>
-
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className={`${notificationType === 'BONUS' ? 'bg-purple-500/20 border-purple-500/50' : 'bg-blue-500/20 border-blue-500/50'} p-2 rounded-full border`}>
-                                {notificationType === 'BONUS' ? (
-                                    <Gift className="text-purple-400 animate-bounce" size={24} />
-                                ) : (
-                                    <Shield className="text-blue-400 animate-bounce" size={24} />
-                                )}
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-white text-sm">
-                                    {notificationType === 'BONUS' ? 'Resgate seu Bônus!' : 'Domine o Jogo!'}
-                                </h4>
-                                <p className="text-[10px] text-gray-300">
-                                    {notificationType === 'BONUS' ? 'Dinheiro grátis te esperando.' : 'Compre Escudos e Ímãs na Loja.'}
-                                </p>
-                            </div>
+                        {/* Icon Container */}
+                        <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full border ${notificationType === 'BONUS' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
+                            {notificationType === 'BONUS' ? (
+                                <Gift size={22} className="animate-pulse" />
+                            ) : (
+                                <Shield size={22} />
+                            )}
                         </div>
 
-                        <div className="flex items-center gap-2 relative z-10">
+                        {/* Text Content */}
+                        <div className="flex-1 flex flex-col justify-center min-w-0">
+                            <h4 className="font-bold text-white text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                                {notificationType === 'BONUS' ? 'Resgate seu Bônus!' : 'Domine o Jogo!'}
+                            </h4>
+                            <p className="text-[11px] text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis">
+                                {notificationType === 'BONUS' ? 'Dinheiro grátis te esperando.' : 'Compre Escudos e Ímãs na Loja.'}
+                            </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 flex-shrink-0 mr-1">
                             <button
                                 onClick={openStoreFromNotification}
-                                className={`${notificationType === 'BONUS' ? 'bg-neon-purple hover:bg-purple-400' : 'bg-blue-600 hover:bg-blue-500'} text-black text-xs font-bold px-3 py-2 rounded-lg transition-colors`}
+                                className={`${notificationType === 'BONUS' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'} text-white text-[10px] font-bold px-4 py-2 rounded-lg transition-colors tracking-wide active:scale-95`}
                             >
                                 {notificationType === 'BONUS' ? 'PEGAR' : 'COMPRAR'}
                             </button>
-                            <button onClick={handleCloseNotification} className="text-gray-500 hover:text-white">
-                                <X size={16} />
+                            <button onClick={handleCloseNotification} className="text-gray-500 hover:text-gray-300 p-1 flex items-center justify-center transition-colors">
+                                <X size={16} strokeWidth={2.5} />
                             </button>
                         </div>
+
                     </div>
                 </div>
             )}
@@ -1970,8 +1970,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                                 </div>
                                                 <div className="text-[10px] text-gray-600 flex items-center justify-end gap-1">
                                                     <span className={`w-1.5 h-1.5 rounded-full ${tx.status === 'COMPLETED' ? 'bg-green-500' :
-                                                            tx.status === 'REJECTED' ? 'bg-red-500' :
-                                                                'bg-amber-500'
+                                                        tx.status === 'REJECTED' ? 'bg-red-500' :
+                                                            'bg-amber-500'
                                                         }`}></span>
                                                     {tx.status === 'COMPLETED' ? 'Sucesso' :
                                                         tx.status === 'REJECTED' ? 'Rejeitado' :
