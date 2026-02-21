@@ -369,7 +369,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                 </header>
 
                 {/* Content Scrollable Area */}
-                <main className="flex-1 overflow-y-auto p-6 space-y-6 relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-opacity-5">
+                <main className="flex-1 overflow-y-auto p-6 space-y-6 relative">
                     {/* Background Glow */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                         <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-emerald-900/10 via-black/0 to-transparent"></div>

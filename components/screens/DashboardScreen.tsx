@@ -1048,7 +1048,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                 </h2>
 
                                 <div className="bg-gradient-to-br from-yellow-900/80 to-black border border-yellow-500 p-8 rounded-3xl shadow-[0_0_60px_rgba(234,179,8,0.4)] text-center mb-8 min-w-[280px] relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                                    <div className="absolute inset-0 opacity-20"></div>
 
                                     <span className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest block mb-2 relative z-10">
                                         Você encontrou
@@ -1459,7 +1459,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                             {/* Decorative Background Image */}
                             <div className="absolute inset-0" style={{ background: banner.bgImage }}></div>
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                            <div className="absolute inset-0 opacity-20"></div>
 
                             {/* Content */}
                             <div className="relative h-full flex flex-col justify-center px-6 z-20">
