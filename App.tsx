@@ -122,8 +122,8 @@ const App: React.FC = () => {
       // Attempt to load user profile from API
       const apiCheck = api.getProfile()
         .then(data => {
-          if (data.user) {
-            const apiUser = data.user;
+          const apiUser = data.user || data;
+          if (apiUser && apiUser.username) {
             const userObj: User = {
               username: apiUser.username,
               balance: apiUser.balance || 0,

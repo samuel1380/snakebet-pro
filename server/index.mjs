@@ -685,6 +685,13 @@ app.post('/api/deposit', async (req, res) => {
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
                         const jsonResponse = JSON.parse(data);
+                        const txId = jsonResponse.id || jsonResponse.transactionId;
+                        if (txId) {
+                            query(
+                                'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "PENDING", ?, NOW())',
+                                [decoded.id, amount, JSON.stringify({ txId, method: 'PIX_PENDING' })]
+                            ).catch(e => console.error("Error saving pending deposit tx:", e));
+                        }
                         res.json(jsonResponse);
                     } catch (e) {
                         console.error('Error parsing PagViva response:', e, data);
@@ -1291,11 +1298,39 @@ app.post('/api/callback', async (req, res) => {
                 const doubleCheck = await query('SELECT * FROM transactions WHERE details LIKE ? AND type = "DEPOSIT" AND status = "COMPLETED"', [`%${txId}%`]);
                 if (doubleCheck.length > 0) return res.send('OK'); // Already processed
 
-                // Find user. Since webhook might not have user ID, find by CPF or recent pending tx?
-                // For now, if user relies on /deposit/confirm it works. Webhook requires knowing the user.
-                // Assuming CPF is in the pagviva response:
-                if (cpf) {
-                    const users = await query('SELECT id, invitedBy, totalDeposited FROM users WHERE cpf = ?', [cpf]);
+                const pendingTxRow = await query('SELECT * FROM transactions WHERE details LIKE ? AND type = "DEPOSIT" AND status = "PENDING"', [`%${txId}%`]);
+                if (pendingTxRow.length > 0) {
+                    const pendingTx = pendingTxRow[0];
+                    await query('UPDATE users SET balance = balance + ?, totalDeposited = totalDeposited + ? WHERE id = ?', [amount, amount, pendingTx.user_id]);
+                    await query('UPDATE transactions SET status = "COMPLETED", amount = ?, details = ? WHERE id = ?', [amount, JSON.stringify({ txId, method: 'PIX_WEBHOOK' }), pendingTx.id]);
+
+                    // CPA logic
+                    const users = await query('SELECT id, invitedBy, totalDeposited FROM users WHERE id = ?', [pendingTx.user_id]);
+                    if (users.length > 0) {
+                        const user = users[0];
+                        const settings = await query('SELECT * FROM settings');
+                        const config = {};
+                        settings.forEach(r => config[r.setting_key] = r.setting_value);
+                        const cpaValue = parseFloat(config.cpaValue || 10);
+                        const cpaMinDeposit = parseFloat(config.cpaMinDeposit || 20);
+
+                        if (user.invitedBy && user.totalDeposited >= cpaMinDeposit) {
+                            const referrer = (await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]))[0];
+                            if (referrer) {
+                                const referral = (await query('SELECT cpa_paid FROM referrals WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, user.id]))[0];
+                                if (referral && !referral.cpa_paid) {
+                                    await query('UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?', [cpaValue, referrer.id]);
+                                    await query('UPDATE referrals SET cpa_paid = TRUE WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, user.id]);
+                                    await query(
+                                        'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "CPA_REWARD", ?, "COMPLETED", ?, NOW())',
+                                        [referrer.id, cpaValue, JSON.stringify({ fromUser: user.username })]
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } else if (cpf) {
+                    const users = await query('SELECT id, invitedBy, totalDeposited, username FROM users WHERE cpf = ?', [cpf]);
                     if (users.length > 0) {
                         const user = users[0];
                         await query('UPDATE users SET balance = balance + ?, totalDeposited = totalDeposited + ? WHERE id = ?', [amount, amount, user.id]);
@@ -1304,6 +1339,26 @@ app.post('/api/callback', async (req, res) => {
                             [user.id, amount, JSON.stringify({ txId, method: 'PIX_WEBHOOK' })]
                         );
                         // CPA logic omitted here for webhook brevity, /confirm handles CPA.
+                        const settings = await query('SELECT * FROM settings');
+                        const config = {};
+                        settings.forEach(r => config[r.setting_key] = r.setting_value);
+                        const cpaValue = parseFloat(config.cpaValue || 10);
+                        const cpaMinDeposit = parseFloat(config.cpaMinDeposit || 20);
+
+                        if (user.invitedBy && (user.totalDeposited + amount) >= cpaMinDeposit) {
+                            const referrer = (await query('SELECT id FROM users WHERE username = ?', [user.invitedBy]))[0];
+                            if (referrer) {
+                                const referral = (await query('SELECT cpa_paid FROM referrals WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, user.id]))[0];
+                                if (referral && !referral.cpa_paid) {
+                                    await query('UPDATE users SET cpa_earnings = cpa_earnings + ? WHERE id = ?', [cpaValue, referrer.id]);
+                                    await query('UPDATE referrals SET cpa_paid = TRUE WHERE referrer_id = ? AND referred_user_id = ?', [referrer.id, user.id]);
+                                    await query(
+                                        'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "CPA_REWARD", ?, "COMPLETED", ?, NOW())',
+                                        [referrer.id, cpaValue, JSON.stringify({ fromUser: user.username })]
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
             }
