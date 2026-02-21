@@ -49,7 +49,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
     const [apple, setApple] = useState<Point>({ x: 5, y: 5 });
     const [bomb, setBomb] = useState<Point | null>(null);
     const [direction, setDirection] = useState<Direction>(Direction.UP);
-    const [crashReason, setCrashReason] = useState<'WALL' | 'SELF' | 'BOT' | 'BOMB'>('WALL');
+    const [crashReason, setCrashReason] = useState<'WALL' | 'SELF' | 'BOT' | 'BOMB' | 'WIN'>('WALL');
 
     // Combo & Tension State
     const [comboCount, setComboCount] = useState(0);
@@ -342,10 +342,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
     }, [magnetActive, phase]);
 
     const handleCashOut = () => {
-        setPhase('CRASHED'); // Stop loop essentially
+        setCrashReason('WIN');
+        setPhase('CRASHED'); // Overlay for WIN is handled in CRASHED phase UI
+
+        // Small delay to let user see "WIN!"
         const totalWin = config.potentialWin + config.betAmount;
         const finalMultiplier = totalWin / config.betAmount;
-        finishGameSession(finalMultiplier);
+        setTimeout(() => {
+            finishGameSession(finalMultiplier);
+        }, 2000);
     };
 
     const gameOver = (reason: 'WALL' | 'SELF' | 'BOT' | 'BOMB'): boolean => {
@@ -867,28 +872,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                     )}
 
                     {phase === 'CRASHED' && (
-                        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/95 flex-col backdrop-blur-md animate-in zoom-in duration-500">
+                        <div className={`absolute inset-0 z-[100] flex items-center justify-center ${crashReason === 'WIN' ? 'bg-green-950/95' : 'bg-black/95'} flex-col backdrop-blur-md animate-in zoom-in duration-500`}>
 
                             {/* Visual Impact Effects */}
                             <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                                <div className="w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_rgba(220,38,38,0.1)_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]"></div>
-                                <div className="absolute top-1/2 left-0 w-full h-[1px] bg-red-500/30"></div>
+                                <div className={`w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_${crashReason === 'WIN' ? 'rgba(57,255,20,0.1)' : 'rgba(220,38,38,0.1)'}_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]`}></div>
+                                <div className={`absolute top-1/2 left-0 w-full h-[1px] ${crashReason === 'WIN' ? 'bg-neon-green/30' : 'bg-red-500/30'}`}></div>
                             </div>
 
                             <div className="relative z-10 flex flex-col items-center">
                                 <div className="relative mb-6">
-                                    <div className="absolute inset-0 bg-red-500 blur-[40px] opacity-30 rounded-full animate-pulse"></div>
-                                    <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
+                                    <div className={`absolute inset-0 ${crashReason === 'WIN' ? 'bg-neon-green' : 'bg-red-500'} blur-[40px] opacity-30 rounded-full animate-pulse`}></div>
+                                    {crashReason === 'WIN' ? (
+                                        <Wallet className="text-neon-green w-32 h-32 drop-shadow-[0_0_20px_rgba(57,255,20,1)] animate-[pulse_1s_infinite]" />
+                                    ) : (
+                                        <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
+                                    )}
                                     {crashReason === 'BOT' && <Skull className="absolute -bottom-2 -right-2 text-white w-12 h-12 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce" />}
                                     {crashReason === 'BOMB' && <Flame className="absolute -bottom-2 -right-2 text-orange-500 w-14 h-14 drop-shadow-[0_0_15px_rgba(249,115,22,1)] animate-pulse" />}
                                 </div>
                             </div>
-                            <h2 className="text-6xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-red-600 font-display italic tracking-widest text-shadow-red z-10 text-center">
-                                {crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
+                            <h2 className={`text-6xl sm:text-7xl font-black text-transparent bg-clip-text ${crashReason === 'WIN' ? 'bg-gradient-to-b from-white to-neon-green text-shadow-[0_0_15px_rgba(57,255,20,0.8)]' : 'bg-gradient-to-b from-white to-red-600 text-shadow-red'} font-display italic tracking-widest z-10 text-center`}>
+                                {crashReason === 'WIN' ? 'WIN!' : crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
                             </h2>
-                            <div className="mt-4 px-6 py-2 bg-red-950/50 border border-red-500/30 rounded-full z-10 backdrop-blur-sm">
-                                <p className="text-red-300 font-black uppercase tracking-[0.2em] text-sm">
-                                    {crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
+                            <div className={`mt-4 px-6 py-2 ${crashReason === 'WIN' ? 'bg-green-950/50 border-neon-green/30' : 'bg-red-950/50 border-red-500/30'} border rounded-full z-10 backdrop-blur-sm`}>
+                                <p className={`${crashReason === 'WIN' ? 'text-neon-green' : 'text-red-300'} font-black uppercase ${crashReason === 'WIN' ? 'tracking-[0.1em]' : 'tracking-[0.2em]'} text-sm`}>
+                                    {crashReason === 'WIN' ? `Saque Realizado: R$ ${(config.potentialWin + config.betAmount).toFixed(2)}` : crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
                                 </p>
                             </div>
                         </div>
