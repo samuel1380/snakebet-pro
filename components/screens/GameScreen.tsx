@@ -804,106 +804,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                         backgroundSize: '10px 10px'
                     }}></div>
 
-                    {/* REVIVE MODAL OVERLAY */}
-                    {phase === 'REVIVING' && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 flex-col backdrop-blur-xl animate-in fade-in zoom-in duration-300 p-6">
-                            <div className="w-full max-w-sm">
-                                <div className="text-center mb-4">
-                                    <HeartPulse className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
-                                    <h2 className="text-3xl font-black text-white font-display italic">NÃO PERCA TUDO!</h2>
-                                    <p className="text-gray-300 text-xs">Você tem R$ {config.potentialWin.toFixed(2)} acumulados.</p>
-                                </div>
 
-                                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 w-full mb-4 space-y-3">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-400 font-bold uppercase">Item Necessário</span>
-                                        <div className="flex items-center gap-1 text-white">
-                                            <Heart size={14} className="text-red-500 fill-red-500" /> Vida Extra
-                                        </div>
-                                    </div>
-
-                                    {userInventory.extraLives > 0 ? (
-                                        <div className="bg-green-500/10 border border-green-500/30 p-2 rounded text-center">
-                                            <span className="text-green-400 text-xs font-bold">Você possui {userInventory.extraLives}x item(s)</span>
-                                        </div>
-                                    ) : (
-                                        <div className="bg-red-500/20 border border-red-500/50 p-2 rounded text-center animate-pulse">
-                                            <span className="text-red-400 text-xs font-bold">Sem item "Vida Extra"!</span>
-                                            <div className="text-[9px] text-gray-400 mt-1">Compre na loja antes de jogar.</div>
-                                        </div>
-                                    )}
-
-                                    <div className="w-full h-px bg-white/10 my-2"></div>
-
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-400 font-bold uppercase">Penalidade</span>
-                                        <span className="text-red-500 font-bold">-75% dos ganhos</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-400 font-bold uppercase">Novo Saldo</span>
-                                        <span className="text-yellow-400 font-bold">R$ {(config.potentialWin * 0.25).toFixed(2)}</span>
-                                    </div>
-
-                                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-2">
-                                        <div
-                                            className="h-full bg-red-500 transition-all duration-1000 ease-linear"
-                                            style={{ width: `${(reviveTimer / 10) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="text-center text-[10px] text-red-400 mt-1 font-mono">
-                                        {reviveTimer}s restantes
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2 w-full">
-                                    <Button
-                                        variant="neon"
-                                        fullWidth
-                                        onClick={handleRevive}
-                                        disabled={userInventory.extraLives <= 0}
-                                        className={`py-3 ${userInventory.extraLives <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-700 border-gray-600 text-gray-400 shadow-none' : ''}`}
-                                    >
-                                        {userInventory.extraLives > 0 ? 'USAR ITEM & REVIVER' : 'ITEM NECESSÁRIO'}
-                                    </Button>
-                                    <Button variant="secondary" fullWidth onClick={handleGiveUp} className="py-2 text-xs">
-                                        Desistir e Perder
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {phase === 'CRASHED' && (
-                        <div className={`fixed inset-0 z-[100] flex items-center justify-center ${crashReason === 'WIN' ? 'bg-green-950/95' : 'bg-black/95'} flex-col backdrop-blur-md animate-in zoom-in duration-500`}>
-
-                            {/* Visual Impact Effects */}
-                            <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                                <div className={`w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_${crashReason === 'WIN' ? 'rgba(57,255,20,0.1)' : 'rgba(220,38,38,0.1)'}_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]`}></div>
-                                <div className={`absolute top-1/2 left-0 w-full h-[1px] ${crashReason === 'WIN' ? 'bg-neon-green/30' : 'bg-red-500/30'}`}></div>
-                            </div>
-
-                            <div className="relative z-10 flex flex-col items-center">
-                                <div className="relative mb-6">
-                                    <div className={`absolute inset-0 ${crashReason === 'WIN' ? 'bg-neon-green' : 'bg-red-500'} blur-[40px] opacity-30 rounded-full animate-pulse`}></div>
-                                    {crashReason === 'WIN' ? (
-                                        <Wallet className="text-neon-green w-32 h-32 drop-shadow-[0_0_20px_rgba(57,255,20,1)] animate-[pulse_1s_infinite]" />
-                                    ) : (
-                                        <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
-                                    )}
-                                    {crashReason === 'BOT' && <Skull className="absolute -bottom-2 -right-2 text-white w-12 h-12 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce" />}
-                                    {crashReason === 'BOMB' && <Flame className="absolute -bottom-2 -right-2 text-orange-500 w-14 h-14 drop-shadow-[0_0_15px_rgba(249,115,22,1)] animate-pulse" />}
-                                </div>
-                            </div>
-                            <h2 className={`text-6xl sm:text-7xl font-black text-transparent bg-clip-text ${crashReason === 'WIN' ? 'bg-gradient-to-b from-white to-neon-green text-shadow-[0_0_15px_rgba(57,255,20,0.8)]' : 'bg-gradient-to-b from-white to-red-600 text-shadow-red'} font-display italic tracking-widest z-10 text-center`}>
-                                {crashReason === 'WIN' ? 'WIN!' : crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
-                            </h2>
-                            <div className={`mt-4 px-6 py-2 ${crashReason === 'WIN' ? 'bg-green-950/50 border-neon-green/30' : 'bg-red-950/50 border-red-500/30'} border rounded-full z-10 backdrop-blur-sm`}>
-                                <p className={`${crashReason === 'WIN' ? 'text-neon-green' : 'text-red-300'} font-black uppercase ${crashReason === 'WIN' ? 'tracking-[0.1em]' : 'tracking-[0.2em]'} text-sm`}>
-                                    {crashReason === 'WIN' ? `Saque Realizado: R$ ${(config.potentialWin + config.betAmount).toFixed(2)}` : crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
-                                </p>
-                            </div>
-                        </div>
-                    )}
                     {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
                         const x = i % GRID_SIZE;
                         const y = Math.floor(i / GRID_SIZE);
@@ -1070,6 +971,108 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                 </p>
 
             </div>
+
+            {/* MODALS MOVED OUTSIDE STACKING CONTEXT */}
+            {/* REVIVE MODAL OVERLAY */}
+            {phase === 'REVIVING' && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 flex-col backdrop-blur-xl animate-in fade-in zoom-in duration-300 p-6">
+                    <div className="w-full max-w-sm">
+                        <div className="text-center mb-4">
+                            <HeartPulse className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
+                            <h2 className="text-3xl font-black text-white font-display italic">NÃO PERCA TUDO!</h2>
+                            <p className="text-gray-300 text-xs">Você tem R$ {config.potentialWin.toFixed(2)} acumulados.</p>
+                        </div>
+
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 w-full mb-4 space-y-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-400 font-bold uppercase">Item Necessário</span>
+                                <div className="flex items-center gap-1 text-white">
+                                    <Heart size={14} className="text-red-500 fill-red-500" /> Vida Extra
+                                </div>
+                            </div>
+
+                            {userInventory.extraLives > 0 ? (
+                                <div className="bg-green-500/10 border border-green-500/30 p-2 rounded text-center">
+                                    <span className="text-green-400 text-xs font-bold">Você possui {userInventory.extraLives}x item(s)</span>
+                                </div>
+                            ) : (
+                                <div className="bg-red-500/20 border border-red-500/50 p-2 rounded text-center animate-pulse">
+                                    <span className="text-red-400 text-xs font-bold">Sem item "Vida Extra"!</span>
+                                    <div className="text-[9px] text-gray-400 mt-1">Compre na loja antes de jogar.</div>
+                                </div>
+                            )}
+
+                            <div className="w-full h-px bg-white/10 my-2"></div>
+
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-400 font-bold uppercase">Penalidade</span>
+                                <span className="text-red-500 font-bold">-75% dos ganhos</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-400 font-bold uppercase">Novo Saldo</span>
+                                <span className="text-yellow-400 font-bold">R$ {(config.potentialWin * 0.25).toFixed(2)}</span>
+                            </div>
+
+                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-2">
+                                <div
+                                    className="h-full bg-red-500 transition-all duration-1000 ease-linear"
+                                    style={{ width: `${(reviveTimer / 10) * 100}%` }}
+                                ></div>
+                            </div>
+                            <div className="text-center text-[10px] text-red-400 mt-1 font-mono">
+                                {reviveTimer}s restantes
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 w-full">
+                            <Button
+                                variant="neon"
+                                fullWidth
+                                onClick={handleRevive}
+                                disabled={userInventory.extraLives <= 0}
+                                className={`py-3 ${userInventory.extraLives <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-700 border-gray-600 text-gray-400 shadow-none' : ''}`}
+                            >
+                                {userInventory.extraLives > 0 ? 'USAR ITEM & REVIVER' : 'ITEM NECESSÁRIO'}
+                            </Button>
+                            <Button variant="secondary" fullWidth onClick={handleGiveUp} className="py-2 text-xs">
+                                Desistir e Perder
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {phase === 'CRASHED' && (
+                <div className={`fixed inset-0 z-[9999] flex items-center justify-center ${crashReason === 'WIN' ? 'bg-green-950/95' : 'bg-black/95'} flex-col backdrop-blur-md animate-in zoom-in duration-500`}>
+
+                    {/* Visual Impact Effects */}
+                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                        <div className={`w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_${crashReason === 'WIN' ? 'rgba(57,255,20,0.1)' : 'rgba(220,38,38,0.1)'}_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]`}></div>
+                        <div className={`absolute top-1/2 left-0 w-full h-[1px] ${crashReason === 'WIN' ? 'bg-neon-green/30' : 'bg-red-500/30'}`}></div>
+                    </div>
+
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="relative mb-6">
+                            <div className={`absolute inset-0 ${crashReason === 'WIN' ? 'bg-neon-green' : 'bg-red-500'} blur-[40px] opacity-30 rounded-full animate-pulse`}></div>
+                            {crashReason === 'WIN' ? (
+                                <Wallet className="text-neon-green w-32 h-32 drop-shadow-[0_0_20px_rgba(57,255,20,1)] animate-[pulse_1s_infinite]" />
+                            ) : (
+                                <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
+                            )}
+                            {crashReason === 'BOT' && <Skull className="absolute -bottom-2 -right-2 text-white w-12 h-12 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce" />}
+                            {crashReason === 'BOMB' && <Flame className="absolute -bottom-2 -right-2 text-orange-500 w-14 h-14 drop-shadow-[0_0_15px_rgba(249,115,22,1)] animate-pulse" />}
+                        </div>
+                    </div>
+                    <h2 className={`text-6xl sm:text-7xl font-black text-transparent bg-clip-text ${crashReason === 'WIN' ? 'bg-gradient-to-b from-white to-neon-green text-shadow-[0_0_15px_rgba(57,255,20,0.8)]' : 'bg-gradient-to-b from-white to-red-600 text-shadow-red'} font-display italic tracking-widest z-10 text-center`}>
+                        {crashReason === 'WIN' ? 'WIN!' : crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
+                    </h2>
+                    <div className={`mt-4 px-6 py-2 ${crashReason === 'WIN' ? 'bg-green-950/50 border-neon-green/30' : 'bg-red-950/50 border-red-500/30'} border rounded-full z-10 backdrop-blur-sm`}>
+                        <p className={`${crashReason === 'WIN' ? 'text-neon-green' : 'text-red-300'} font-black uppercase ${crashReason === 'WIN' ? 'tracking-[0.1em]' : 'tracking-[0.2em]'} text-sm`}>
+                            {crashReason === 'WIN' ? `Saque Realizado: R$ ${(config.potentialWin + config.betAmount).toFixed(2)}` : crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
+                        </p>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
