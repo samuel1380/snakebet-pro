@@ -996,7 +996,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
             </div>
 
             {/* Controls & Action */}
-            <div className="mt-6 z-20 w-full max-w-[360px] flex flex-col gap-4">
+            <div className="mt-6 z-20 w-full max-w-[360px] flex flex-col gap-4 pb-12 sm:pb-0">
 
                 <Button
                     onClick={handleCashOut}
@@ -1020,7 +1020,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                 </Button>
 
                 {/* Mobile Circular D-Pad - Redesigned & Lifted for iPhone */}
-                <div className="relative mx-auto sm:hidden w-56 h-56 bg-gradient-to-b from-[#111113]/90 to-black/95 rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-xl flex items-center justify-center mb-10 pb-[env(safe-area-inset-bottom)] pointer-events-auto select-none touch-manipulation">
+                <div className="relative mx-auto sm:hidden w-56 h-56 bg-gradient-to-b from-[#111113]/90 to-black/95 rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-xl flex items-center justify-center mb-16 pb-[calc(env(safe-area-inset-bottom)+20px)] pointer-events-auto select-none touch-manipulation">
 
                     {/* Inner glowing ring structure */}
                     <div className="absolute inset-1 rounded-full border border-white/5 pointer-events-none"></div>
