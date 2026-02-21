@@ -1720,6 +1720,21 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                                     <>
                                         <h3 className="font-bold mb-4">{activeModal === 'DEPOSIT' ? 'Depósito via Pix' : 'Saque via Pix'}</h3>
 
+                                        {/* REAL BALANCE INDICATOR FOR WITHDRAWAL */}
+                                        {activeModal === 'WITHDRAW' && (
+                                            <div className="bg-[#111] border border-white/5 p-4 rounded-xl mb-4 flex flex-col items-center">
+                                                <span className="text-gray-400 text-xs uppercase tracking-widest mb-1">Saldo Sacável</span>
+                                                <span className="text-neon-green text-2xl font-black font-display tracking-wider">
+                                                    R$ {user.balance.toFixed(2)}
+                                                </span>
+                                                {user.bonusBalance > 0 && (
+                                                    <span className="text-[10px] text-gray-500 mt-2 text-center max-w-[200px]">
+                                                        *O Saldo Bônus (R$ {user.bonusBalance.toFixed(2)}) é restrito apenas a jogatinas e não pode ser sacado.
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {/* CPF WARNING FOR WITHDRAWAL */}
                                         {activeModal === 'WITHDRAW' && (
                                             <div className="bg-yellow-500/10 border border-yellow-500/50 p-3 rounded-xl flex items-start gap-3 mb-4 animate-pulse">
