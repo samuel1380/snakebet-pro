@@ -1089,6 +1089,55 @@ app.post('/api/affiliates/claim', async (req, res) => {
 // GAME: Process Result (REMOVED FOR SECURITY)
 // Use /api/game/start and /api/game/end instead
 
+// ADMIN: Login
+app.post('/api/admin/login', async (req, res) => {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (password === adminPassword) {
+        const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
+        res.json({ token });
+    } else {
+        res.status(401).json({ error: 'Senha incorreta.' });
+    }
+});
+
+// ADMIN: Config
+app.get('/api/admin/config', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acesso negado.' });
+
+        const settings = await query('SELECT * FROM settings');
+        const configParams = {};
+        settings.forEach(s => {
+            try { configParams[s.setting_key] = JSON.parse(s.setting_value); }
+            catch (e) { configParams[s.setting_key] = s.setting_value; }
+        });
+        res.json(configParams);
+    } catch (err) { res.status(500).json({ error: 'Erro ao carregar configurações' }); }
+});
+
+app.post('/api/admin/config', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acesso negado.' });
+
+        const config = req.body;
+        for (const [key, value] of Object.entries(config)) {
+            const strVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            await query('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', [key, strVal, strVal]);
+        }
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'Erro ao salvar configurações' }); }
+});
+
 // ADMIN ROUTES
 app.get('/api/admin/users', async (req, res) => {
     const authHeader = req.headers.authorization;

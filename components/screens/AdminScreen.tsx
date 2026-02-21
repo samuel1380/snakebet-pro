@@ -20,7 +20,7 @@ const SidebarItem = ({ icon, label, active, isOpen, onClick }: { icon: React.Rea
         className={`
       flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 group
       ${active
-                ? 'bg-red-600/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(220,38,38,0.15)]'
+                ? 'bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                 : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'
             }
       ${!isOpen && 'justify-center'}
@@ -35,7 +35,7 @@ const SidebarItem = ({ icon, label, active, isOpen, onClick }: { icon: React.Rea
             </span>
         )}
         {isOpen && active && (
-            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]"></div>
+            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>
         )}
     </div>
 );
@@ -253,13 +253,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                 <div className="h-16 flex items-center px-6 border-b border-white/5">
                     {sidebarOpen ? (
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-lg shadow-red-900/40 border border-red-500/20">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center shadow-lg shadow-emerald-900/40 border border-emerald-500/20">
                                 <ShieldCheck size={18} className="text-white" />
                             </div>
-                            <span className="font-bold text-lg tracking-tight text-white drop-shadow-sm">SNAKE<span className="text-red-500">BET</span></span>
+                            <span className="font-bold text-lg tracking-tight text-white drop-shadow-sm">SNAKE<span className="text-emerald-500">BET</span> ADMIN</span>
                         </div>
                     ) : (
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center mx-auto shadow-lg shadow-red-900/40 border border-red-500/20">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center mx-auto shadow-lg shadow-emerald-900/40 border border-emerald-500/20">
                             <ShieldCheck size={18} className="text-white" />
                         </div>
                     )}
@@ -347,13 +347,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                             <input
                                 type="text"
                                 placeholder="Buscar..."
-                                className="bg-[#1a1a1c] border border-white/5 rounded-full py-1.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500/50 w-64 transition-all"
+                                className="bg-[#1a1a1c] border border-white/5 rounded-full py-1.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-64 transition-all"
                             />
                         </div>
 
                         <button className="relative p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-colors">
                             <Bell size={20} />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#111113]"></span>
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#111113]"></span>
                         </button>
 
                         <div className="flex items-center gap-3 pl-4 border-l border-white/5">
@@ -372,9 +372,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                 <main className="flex-1 overflow-y-auto p-6 space-y-6 relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-opacity-5">
                     {/* Background Glow */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-red-900/10 via-black/0 to-transparent"></div>
-                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/3"></div>
-                        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/3"></div>
+                        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-emerald-900/10 via-black/0 to-transparent"></div>
+                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/3"></div>
+                        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-green-600/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/3"></div>
                     </div>
 
                     {activeTab === 'dashboard' && (
@@ -415,8 +415,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                             </div>
 
                             {/* Welcome Banner */}
-                            <div className="bg-gradient-to-r from-red-900/20 to-black/40 border border-white/5 rounded-2xl p-8 text-center relative overflow-hidden backdrop-blur-sm">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                            <div className="bg-gradient-to-r from-emerald-900/20 to-black/40 border border-white/5 rounded-2xl p-8 text-center relative overflow-hidden backdrop-blur-sm">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                                 <h2 className="text-3xl font-bold text-white mb-2 relative z-10">Bem-vindo ao SnakeBet Admin</h2>
                                 <p className="text-gray-400 max-w-lg mx-auto relative z-10 mb-6">Painel de controle centralizado. Utilize o menu lateral para gerenciar usuários, transações e configurações do sistema.</p>
 
@@ -447,7 +447,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                         placeholder="Filtrar por usuário..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full bg-[#09090b] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors shadow-inner"
+                                        className="w-full bg-[#09090b] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors shadow-inner"
                                     />
                                 </div>
                             </div>
@@ -455,7 +455,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-gradient-to-r from-red-900/10 to-transparent text-gray-400 text-xs font-bold uppercase tracking-wider border-b border-red-500/10">
+                                        <tr className="bg-gradient-to-r from-emerald-900/10 to-transparent text-gray-400 text-xs font-bold uppercase tracking-wider border-b border-emerald-500/10">
                                             <th className="p-4 pl-6">Usuário</th>
                                             <th className="p-4">Carteira Real</th>
                                             <th className="p-4">Bônus</th>
@@ -466,7 +466,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
                                         {filteredUsers.map(user => (
-                                            <tr key={user.username} className="hover:bg-red-500/[0.02] transition-colors group border-b border-white/5 last:border-0">
+                                            <tr key={user.username} className="hover:bg-emerald-500/[0.02] transition-colors group border-b border-white/5 last:border-0">
                                                 <td className="p-4 pl-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full bg-[#1a1a1c] flex items-center justify-center border border-white/10 text-sm font-bold text-gray-300">
@@ -603,7 +603,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                     <h2 className="text-lg font-bold text-white mb-1">Solicitações de Saque</h2>
                                     <p className="text-sm text-gray-500">Gerencie as saídas de valor e pagamentos.</p>
                                 </div>
-                                <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 text-red-500">
+                                <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-500">
                                     <ArrowUpRight size={20} />
                                 </div>
                             </div>
@@ -621,7 +621,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
                                         {withdrawalsList.map((t, i) => (
-                                            <tr key={i} className="hover:bg-red-500/[0.02] transition-colors border-b border-white/5 last:border-0">
+                                            <tr key={i} className="hover:bg-emerald-500/[0.02] transition-colors border-b border-white/5 last:border-0">
                                                 <td className="p-4 pl-6 text-sm text-gray-400">
                                                     {new Date(t.timestamp).toLocaleString()}
                                                 </td>
@@ -763,7 +763,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                     flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg
                                     ${configSuccess
                                             ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                                            : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
+                                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
                                         }
                                     ${savingConfig && 'opacity-70 cursor-wait'}
                                 `}
