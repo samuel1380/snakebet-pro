@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
@@ -636,7 +637,7 @@ app.post('/api/deposit', async (req, res) => {
         }
 
         // Call PagViva API
-        const postbackUrl = `${req.protocol}://${req.get('host')}/api/callback`; // Or from env
+        const postbackUrl = `https://${req.get('host')}/api/callback`; // Force HTTPS for webhooks
 
         const payload = JSON.stringify({
             postback: postbackUrl,
@@ -685,7 +686,7 @@ app.post('/api/deposit', async (req, res) => {
                 if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                     try {
                         const jsonResponse = JSON.parse(data);
-                        const txId = jsonResponse.id || jsonResponse.transactionId;
+                        const txId = jsonResponse.idTransaction || jsonResponse.id || jsonResponse.transactionId || jsonResponse.transaction_id;
                         if (txId) {
                             query(
                                 'INSERT INTO transactions (user_id, type, amount, status, details, created_at) VALUES (?, "DEPOSIT", ?, "PENDING", ?, NOW())',
@@ -1258,7 +1259,7 @@ app.post('/api/callback', async (req, res) => {
         console.log("PagViva Deposit Webhook:", body);
 
         // PagViva sends { id, status, etc. }
-        const txId = body.id || body.transactionId;
+        const txId = body.idTransaction || body.id || body.transactionId || body.transaction_id;
         if (!txId) {
             return res.status(400).send('No ID');
         }
@@ -1374,7 +1375,7 @@ app.post('/api/withdraw-callback', async (req, res) => {
     try {
         const body = req.body;
         console.log("PagViva Withdraw Webhook:", body);
-        const txId = body.id || body.transactionId;
+        const txId = body.idTransaction || body.id || body.transactionId || body.transaction_id;
         const status = (body.status || '').toUpperCase();
 
         if (txId) {
@@ -1394,6 +1395,15 @@ app.post('/api/withdraw-callback', async (req, res) => {
     } catch (e) {
         console.error("Withdraw Webhook error", e);
         res.status(500).send("Error");
+    }
+});
+
+app.get('/api/debug/txs', async (req, res) => {
+    try {
+        const txs = await query('SELECT * FROM transactions ORDER BY id DESC LIMIT 20');
+        res.json(txs);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
