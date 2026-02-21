@@ -806,268 +806,271 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
 
                     {/* REVIVE MODAL OVERLAY */}
                     {phase === 'REVIVING' && (
-                        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/90 flex-col backdrop-blur-md animate-in fade-in zoom-in duration-300 p-4">
-                            <div className="text-center mb-4">
-                                <HeartPulse className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
-                                <h2 className="text-3xl font-black text-white font-display italic">NÃO PERCA TUDO!</h2>
-                                <p className="text-gray-300 text-xs">Você tem R$ {config.potentialWin.toFixed(2)} acumulados.</p>
-                            </div>
-
-                            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 w-full mb-4 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-400 font-bold uppercase">Item Necessário</span>
-                                    <div className="flex items-center gap-1 text-white">
-                                        <Heart size={14} className="text-red-500 fill-red-500" /> Vida Extra
-                                    </div>
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 flex-col backdrop-blur-xl animate-in fade-in zoom-in duration-300 p-6">
+                            <div className="w-full max-w-sm">
+                                <div className="text-center mb-4">
+                                    <HeartPulse className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
+                                    <h2 className="text-3xl font-black text-white font-display italic">NÃO PERCA TUDO!</h2>
+                                    <p className="text-gray-300 text-xs">Você tem R$ {config.potentialWin.toFixed(2)} acumulados.</p>
                                 </div>
 
-                                {userInventory.extraLives > 0 ? (
-                                    <div className="bg-green-500/10 border border-green-500/30 p-2 rounded text-center">
-                                        <span className="text-green-400 text-xs font-bold">Você possui {userInventory.extraLives}x item(s)</span>
-                                    </div>
-                                ) : (
-                                    <div className="bg-red-500/20 border border-red-500/50 p-2 rounded text-center animate-pulse">
-                                        <span className="text-red-400 text-xs font-bold">Sem item "Vida Extra"!</span>
-                                        <div className="text-[9px] text-gray-400 mt-1">Compre na loja antes de jogar.</div>
-                                    </div>
-                                )}
-
-                                <div className="w-full h-px bg-white/10 my-2"></div>
-
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-gray-400 font-bold uppercase">Penalidade</span>
-                                    <span className="text-red-500 font-bold">-75% dos ganhos</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-gray-400 font-bold uppercase">Novo Saldo</span>
-                                    <span className="text-yellow-400 font-bold">R$ {(config.potentialWin * 0.25).toFixed(2)}</span>
-                                </div>
-
-                                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-2">
-                                    <div
-                                        className="h-full bg-red-500 transition-all duration-1000 ease-linear"
-                                        style={{ width: `${(reviveTimer / 10) * 100}%` }}
-                                    ></div>
-                                </div>
-                                <div className="text-center text-[10px] text-red-400 mt-1 font-mono">
-                                    {reviveTimer}s restantes
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-2 w-full">
-                                <Button
-                                    variant="neon"
-                                    fullWidth
-                                    onClick={handleRevive}
-                                    disabled={userInventory.extraLives <= 0}
-                                    className={`py-3 ${userInventory.extraLives <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-700 border-gray-600 text-gray-400 shadow-none' : ''}`}
-                                >
-                                    {userInventory.extraLives > 0 ? 'USAR ITEM & REVIVER' : 'ITEM NECESSÁRIO'}
-                                </Button>
-                                <Button variant="secondary" fullWidth onClick={handleGiveUp} className="py-2 text-xs">
-                                    Desistir e Perder
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {phase === 'CRASHED' && (
-                        <div className={`absolute inset-0 z-[100] flex items-center justify-center ${crashReason === 'WIN' ? 'bg-green-950/95' : 'bg-black/95'} flex-col backdrop-blur-md animate-in zoom-in duration-500`}>
-
-                            {/* Visual Impact Effects */}
-                            <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                                <div className={`w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_${crashReason === 'WIN' ? 'rgba(57,255,20,0.1)' : 'rgba(220,38,38,0.1)'}_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]`}></div>
-                                <div className={`absolute top-1/2 left-0 w-full h-[1px] ${crashReason === 'WIN' ? 'bg-neon-green/30' : 'bg-red-500/30'}`}></div>
-                            </div>
-
-                            <div className="relative z-10 flex flex-col items-center">
-                                <div className="relative mb-6">
-                                    <div className={`absolute inset-0 ${crashReason === 'WIN' ? 'bg-neon-green' : 'bg-red-500'} blur-[40px] opacity-30 rounded-full animate-pulse`}></div>
-                                    {crashReason === 'WIN' ? (
-                                        <Wallet className="text-neon-green w-32 h-32 drop-shadow-[0_0_20px_rgba(57,255,20,1)] animate-[pulse_1s_infinite]" />
-                                    ) : (
-                                        <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
-                                    )}
-                                    {crashReason === 'BOT' && <Skull className="absolute -bottom-2 -right-2 text-white w-12 h-12 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce" />}
-                                    {crashReason === 'BOMB' && <Flame className="absolute -bottom-2 -right-2 text-orange-500 w-14 h-14 drop-shadow-[0_0_15px_rgba(249,115,22,1)] animate-pulse" />}
-                                </div>
-                            </div>
-                            <h2 className={`text-6xl sm:text-7xl font-black text-transparent bg-clip-text ${crashReason === 'WIN' ? 'bg-gradient-to-b from-white to-neon-green text-shadow-[0_0_15px_rgba(57,255,20,0.8)]' : 'bg-gradient-to-b from-white to-red-600 text-shadow-red'} font-display italic tracking-widest z-10 text-center`}>
-                                {crashReason === 'WIN' ? 'WIN!' : crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
-                            </h2>
-                            <div className={`mt-4 px-6 py-2 ${crashReason === 'WIN' ? 'bg-green-950/50 border-neon-green/30' : 'bg-red-950/50 border-red-500/30'} border rounded-full z-10 backdrop-blur-sm`}>
-                                <p className={`${crashReason === 'WIN' ? 'text-neon-green' : 'text-red-300'} font-black uppercase ${crashReason === 'WIN' ? 'tracking-[0.1em]' : 'tracking-[0.2em]'} text-sm`}>
-                                    {crashReason === 'WIN' ? `Saque Realizado: R$ ${(config.potentialWin + config.betAmount).toFixed(2)}` : crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                    {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
-                        const x = i % GRID_SIZE;
-                        const y = Math.floor(i / GRID_SIZE);
-
-                        let isSnakeHead = snake[0].x === x && snake[0].y === y;
-                        let isSnakeBody = snake.some((s, idx) => idx !== 0 && s.x === x && s.y === y);
-
-                        let isBotHead = false;
-                        let isBotBody = false;
-
-                        bots.forEach(bot => {
-                            if (bot[0].x === x && bot[0].y === y) isBotHead = true;
-                            else if (bot.some((b, idx) => idx !== 0 && b.x === x && b.y === y)) isBotBody = true;
-                        });
-
-                        let isApple = apple.x === x && apple.y === y;
-                        let isBomb = bomb && bomb.x === x && bomb.y === y;
-
-                        return (
-                            <div key={i} className="relative">
-                                {/* Player Snake */}
-                                {isSnakeHead && (
-                                    <div
-                                        className={`absolute inset-[1px] rounded z-30 
-                        ${isVip
-                                                ? '' // Custom VIP Styles applied via style prop
-                                                : 'bg-neon-green shadow-[0_0_15px_#39ff14]'} 
-                        ${phase === 'CRASHED' ? 'bg-red-500 shadow-red-500' : ''} 
-                        ${isGhostMode ? 'animate-pulse opacity-50' : ''}`}
-                                        style={isVip && phase !== 'CRASHED' ? goldenHeadStyle : {}}
-                                    >
-                                        {/* VIP Eyes and Nostrils for realism */}
-                                        {isVip && phase !== 'CRASHED' && (
-                                            <>
-                                                {/* Eyes */}
-                                                <div className="absolute top-[25%] left-[10%] w-[25%] h-[25%] bg-black rounded-full flex items-center justify-center transform -rotate-12 border border-[#8B0000]">
-                                                    <div className="w-[30%] h-[70%] bg-[#ff0000] rounded-full shadow-[0_0_2px_#ff0000]"></div>
-                                                </div>
-                                                <div className="absolute top-[25%] right-[10%] w-[25%] h-[25%] bg-black rounded-full flex items-center justify-center transform rotate-12 border border-[#8B0000]">
-                                                    <div className="w-[30%] h-[70%] bg-[#ff0000] rounded-full shadow-[0_0_2px_#ff0000]"></div>
-                                                </div>
-                                                {/* Nostrils */}
-                                                <div className="absolute bottom-[20%] left-[35%] w-[8%] h-[8%] bg-black rounded-full opacity-60"></div>
-                                                <div className="absolute bottom-[20%] right-[35%] w-[8%] h-[8%] bg-black rounded-full opacity-60"></div>
-                                            </>
-                                        )}
-                                        {!isVip && <div className="absolute inset-0 bg-white/30 rounded-t"></div>}
-                                    </div>
-                                )}
-                                {isSnakeBody && (
-                                    <div
-                                        className={`absolute inset-[1px] rounded z-20 
-                        ${isVip
-                                                ? '' // Custom VIP Styles
-                                                : 'bg-neon-green/50 shadow-[0_0_5px_rgba(57,255,20,0.3)]'} 
-                        ${phase === 'CRASHED' ? 'bg-red-500/50' : ''} 
-                        ${isGhostMode ? 'opacity-30' : ''}`}
-                                        style={isVip && phase !== 'CRASHED' ? goldenScalesStyle : {}}
-                                    ></div>
-                                )}
-
-                                {/* Bot Snakes - Purple/Pink */}
-                                {isBotHead && (
-                                    <div className="absolute inset-[1px] bg-neon-purple rounded shadow-[0_0_15px_#bc13fe] z-30 animate-pulse">
-                                        <div className="absolute top-1 left-1 w-1 h-1 bg-white rounded-full"></div>
-                                        <div className="absolute top-1 right-1 w-1 h-1 bg-white rounded-full"></div>
-                                    </div>
-                                )}
-                                {isBotBody && (
-                                    <div className="absolute inset-[1px] bg-neon-purple/50 rounded shadow-[0_0_5px_rgba(188,19,254,0.3)] z-20"></div>
-                                )}
-
-                                {/* Apple */}
-                                {isApple && (
-                                    <div className="absolute inset-0 flex items-center justify-center z-20 transition-all duration-150">
-                                        <div className="w-[80%] h-[80%] bg-gradient-to-br from-red-400 to-red-600 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-bounce">
-                                            <div className="absolute top-1 right-1 w-2 h-2 bg-white/50 rounded-full blur-[1px]"></div>
+                                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 w-full mb-4 space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-400 font-bold uppercase">Item Necessário</span>
+                                        <div className="flex items-center gap-1 text-white">
+                                            <Heart size={14} className="text-red-500 fill-red-500" /> Vida Extra
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Bomb */}
-                                {isBomb && (
-                                    <div className="absolute inset-0 flex items-center justify-center z-20 animate-pulse">
-                                        <Bomb size="90%" className="text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" fill="currentColor" />
+                                    {userInventory.extraLives > 0 ? (
+                                        <div className="bg-green-500/10 border border-green-500/30 p-2 rounded text-center">
+                                            <span className="text-green-400 text-xs font-bold">Você possui {userInventory.extraLives}x item(s)</span>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-red-500/20 border border-red-500/50 p-2 rounded text-center animate-pulse">
+                                            <span className="text-red-400 text-xs font-bold">Sem item "Vida Extra"!</span>
+                                            <div className="text-[9px] text-gray-400 mt-1">Compre na loja antes de jogar.</div>
+                                        </div>
+                                    )}
+
+                                    <div className="w-full h-px bg-white/10 my-2"></div>
+
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-400 font-bold uppercase">Penalidade</span>
+                                        <span className="text-red-500 font-bold">-75% dos ganhos</span>
                                     </div>
-                                )}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-400 font-bold uppercase">Novo Saldo</span>
+                                        <span className="text-yellow-400 font-bold">R$ {(config.potentialWin * 0.25).toFixed(2)}</span>
+                                    </div>
+
+                                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-2">
+                                        <div
+                                            className="h-full bg-red-500 transition-all duration-1000 ease-linear"
+                                            style={{ width: `${(reviveTimer / 10) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="text-center text-[10px] text-red-400 mt-1 font-mono">
+                                        {reviveTimer}s restantes
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Button
+                                        variant="neon"
+                                        fullWidth
+                                        onClick={handleRevive}
+                                        disabled={userInventory.extraLives <= 0}
+                                        className={`py-3 ${userInventory.extraLives <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-700 border-gray-600 text-gray-400 shadow-none' : ''}`}
+                                    >
+                                        {userInventory.extraLives > 0 ? 'USAR ITEM & REVIVER' : 'ITEM NECESSÁRIO'}
+                                    </Button>
+                                    <Button variant="secondary" fullWidth onClick={handleGiveUp} className="py-2 text-xs">
+                                        Desistir e Perder
+                                    </Button>
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Controls & Action */}
-            <div className="mt-6 z-20 w-full max-w-[360px] flex flex-col gap-4 pb-12 sm:pb-0">
-
-                <Button
-                    onClick={handleCashOut}
-                    disabled={phase !== 'PLAYING' || config.applesEaten === 0}
-                    className={`
-            py-4 text-xl font-black uppercase tracking-wider transition-all duration-300
-            ${config.applesEaten > 0
-                            ? 'bg-gradient-to-r from-neon-green to-[#2db312] text-black shadow-[0_0_30px_rgba(57,255,20,0.4)] hover:scale-105 border-0 scale-105'
-                            : 'glass-panel text-gray-500 border-white/5'}
-            ${tensionLevel === 3 ? 'animate-pulse' : ''}
-          `}
-                >
-                    {config.applesEaten > 0 ? (
-                        <span className="flex items-center justify-center gap-2">
-                            <Zap className="w-6 h-6 fill-current" />
-                            SACAR R$ {(config.betAmount + config.potentialWin).toFixed(2)}
-                        </span>
-                    ) : (
-                        "Pegue maçãs para sacar"
+                        </div>
+                        </div>
                     )}
-                </Button>
 
-                {/* Mobile Circular D-Pad - Redesigned & Lifted for iPhone */}
-                <div className="relative mx-auto sm:hidden w-56 h-56 bg-gradient-to-b from-[#111113]/90 to-black/95 rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-xl flex items-center justify-center mb-16 pb-[calc(env(safe-area-inset-bottom)+20px)] pointer-events-auto select-none touch-manipulation">
+                {phase === 'CRASHED' && (
+                    <div className={`fixed inset-0 z-[100] flex items-center justify-center ${crashReason === 'WIN' ? 'bg-green-950/95' : 'bg-black/95'} flex-col backdrop-blur-md animate-in zoom-in duration-500`}>
 
-                    {/* Inner glowing ring structure */}
-                    <div className="absolute inset-1 rounded-full border border-white/5 pointer-events-none"></div>
+                        {/* Visual Impact Effects */}
+                        <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                            <div className={`w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,_${crashReason === 'WIN' ? 'rgba(57,255,20,0.1)' : 'rgba(220,38,38,0.1)'}_0%,_transparent_50%)] animate-[spin_10s_linear_infinite]`}></div>
+                            <div className={`absolute top-1/2 left-0 w-full h-[1px] ${crashReason === 'WIN' ? 'bg-neon-green/30' : 'bg-red-500/30'}`}></div>
+                        </div>
 
-                    {/* UP */}
-                    <button
-                        className="absolute top-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-t-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
-                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.UP); }}
-                    >
-                        <ChevronUp size={44} className="drop-shadow-lg pb-1" />
-                    </button>
-
-                    {/* DOWN */}
-                    <button
-                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-b-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
-                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.DOWN); }}
-                    >
-                        <ChevronDown size={44} className="drop-shadow-lg pt-1" />
-                    </button>
-
-                    {/* LEFT */}
-                    <button
-                        className="absolute left-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-l-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
-                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.LEFT); }}
-                    >
-                        <ChevronLeft size={44} className="drop-shadow-lg pr-1" />
-                    </button>
-
-                    {/* RIGHT */}
-                    <button
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-r-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
-                        onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.RIGHT); }}
-                    >
-                        <ChevronRight size={44} className="drop-shadow-lg pl-1" />
-                    </button>
-
-                    {/* Center Core */}
-                    <div className="w-16 h-16 bg-[#1a1a1d] rounded-full shadow-[inset_0_4px_15px_rgba(0,0,0,1),0_0_15px_rgba(0,0,0,0.5)] flex items-center justify-center relative z-0 border border-white/5 pointer-events-none">
-                        <div className="w-5 h-5 bg-neon-green rounded-full shadow-[0_0_20px_rgba(57,255,20,0.8)] opacity-60"></div>
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="relative mb-6">
+                                <div className={`absolute inset-0 ${crashReason === 'WIN' ? 'bg-neon-green' : 'bg-red-500'} blur-[40px] opacity-30 rounded-full animate-pulse`}></div>
+                                {crashReason === 'WIN' ? (
+                                    <Wallet className="text-neon-green w-32 h-32 drop-shadow-[0_0_20px_rgba(57,255,20,1)] animate-[pulse_1s_infinite]" />
+                                ) : (
+                                    <AlertOctagon className="text-red-500 w-32 h-32 drop-shadow-[0_0_20px_rgba(220,38,38,1)] animate-[pulse_1s_infinite]" />
+                                )}
+                                {crashReason === 'BOT' && <Skull className="absolute -bottom-2 -right-2 text-white w-12 h-12 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce" />}
+                                {crashReason === 'BOMB' && <Flame className="absolute -bottom-2 -right-2 text-orange-500 w-14 h-14 drop-shadow-[0_0_15px_rgba(249,115,22,1)] animate-pulse" />}
+                            </div>
+                        </div>
+                        <h2 className={`text-6xl sm:text-7xl font-black text-transparent bg-clip-text ${crashReason === 'WIN' ? 'bg-gradient-to-b from-white to-neon-green text-shadow-[0_0_15px_rgba(57,255,20,0.8)]' : 'bg-gradient-to-b from-white to-red-600 text-shadow-red'} font-display italic tracking-widest z-10 text-center`}>
+                            {crashReason === 'WIN' ? 'WIN!' : crashReason === 'BOT' ? 'KILLED' : crashReason === 'BOMB' ? 'BOOM!' : 'CRASHED'}
+                        </h2>
+                        <div className={`mt-4 px-6 py-2 ${crashReason === 'WIN' ? 'bg-green-950/50 border-neon-green/30' : 'bg-red-950/50 border-red-500/30'} border rounded-full z-10 backdrop-blur-sm`}>
+                            <p className={`${crashReason === 'WIN' ? 'text-neon-green' : 'text-red-300'} font-black uppercase ${crashReason === 'WIN' ? 'tracking-[0.1em]' : 'tracking-[0.2em]'} text-sm`}>
+                                {crashReason === 'WIN' ? `Saque Realizado: R$ ${(config.potentialWin + config.betAmount).toFixed(2)}` : crashReason === 'BOT' ? 'Morto por um inimigo' : crashReason === 'WALL' ? 'Colisão com a parede' : crashReason === 'BOMB' ? 'Explosão fatal' : 'Auto-colisão detectada'}
+                            </p>
+                        </div>
                     </div>
-                </div>
+                )}
+                {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
+                    const x = i % GRID_SIZE;
+                    const y = Math.floor(i / GRID_SIZE);
 
-                <p className="text-center text-gray-500 text-[10px] hidden sm:block uppercase tracking-widest mt-2 animate-pulse">
-                    Dica: Use as setas do teclado ou deslize o dedo na tela
-                </p>
+                    let isSnakeHead = snake[0].x === x && snake[0].y === y;
+                    let isSnakeBody = snake.some((s, idx) => idx !== 0 && s.x === x && s.y === y);
 
+                    let isBotHead = false;
+                    let isBotBody = false;
+
+                    bots.forEach(bot => {
+                        if (bot[0].x === x && bot[0].y === y) isBotHead = true;
+                        else if (bot.some((b, idx) => idx !== 0 && b.x === x && b.y === y)) isBotBody = true;
+                    });
+
+                    let isApple = apple.x === x && apple.y === y;
+                    let isBomb = bomb && bomb.x === x && bomb.y === y;
+
+                    return (
+                        <div key={i} className="relative">
+                            {/* Player Snake */}
+                            {isSnakeHead && (
+                                <div
+                                    className={`absolute inset-[1px] rounded z-30 
+                        ${isVip
+                                            ? '' // Custom VIP Styles applied via style prop
+                                            : 'bg-neon-green shadow-[0_0_15px_#39ff14]'} 
+                        ${phase === 'CRASHED' ? 'bg-red-500 shadow-red-500' : ''} 
+                        ${isGhostMode ? 'animate-pulse opacity-50' : ''}`}
+                                    style={isVip && phase !== 'CRASHED' ? goldenHeadStyle : {}}
+                                >
+                                    {/* VIP Eyes and Nostrils for realism */}
+                                    {isVip && phase !== 'CRASHED' && (
+                                        <>
+                                            {/* Eyes */}
+                                            <div className="absolute top-[25%] left-[10%] w-[25%] h-[25%] bg-black rounded-full flex items-center justify-center transform -rotate-12 border border-[#8B0000]">
+                                                <div className="w-[30%] h-[70%] bg-[#ff0000] rounded-full shadow-[0_0_2px_#ff0000]"></div>
+                                            </div>
+                                            <div className="absolute top-[25%] right-[10%] w-[25%] h-[25%] bg-black rounded-full flex items-center justify-center transform rotate-12 border border-[#8B0000]">
+                                                <div className="w-[30%] h-[70%] bg-[#ff0000] rounded-full shadow-[0_0_2px_#ff0000]"></div>
+                                            </div>
+                                            {/* Nostrils */}
+                                            <div className="absolute bottom-[20%] left-[35%] w-[8%] h-[8%] bg-black rounded-full opacity-60"></div>
+                                            <div className="absolute bottom-[20%] right-[35%] w-[8%] h-[8%] bg-black rounded-full opacity-60"></div>
+                                        </>
+                                    )}
+                                    {!isVip && <div className="absolute inset-0 bg-white/30 rounded-t"></div>}
+                                </div>
+                            )}
+                            {isSnakeBody && (
+                                <div
+                                    className={`absolute inset-[1px] rounded z-20 
+                        ${isVip
+                                            ? '' // Custom VIP Styles
+                                            : 'bg-neon-green/50 shadow-[0_0_5px_rgba(57,255,20,0.3)]'} 
+                        ${phase === 'CRASHED' ? 'bg-red-500/50' : ''} 
+                        ${isGhostMode ? 'opacity-30' : ''}`}
+                                    style={isVip && phase !== 'CRASHED' ? goldenScalesStyle : {}}
+                                ></div>
+                            )}
+
+                            {/* Bot Snakes - Purple/Pink */}
+                            {isBotHead && (
+                                <div className="absolute inset-[1px] bg-neon-purple rounded shadow-[0_0_15px_#bc13fe] z-30 animate-pulse">
+                                    <div className="absolute top-1 left-1 w-1 h-1 bg-white rounded-full"></div>
+                                    <div className="absolute top-1 right-1 w-1 h-1 bg-white rounded-full"></div>
+                                </div>
+                            )}
+                            {isBotBody && (
+                                <div className="absolute inset-[1px] bg-neon-purple/50 rounded shadow-[0_0_5px_rgba(188,19,254,0.3)] z-20"></div>
+                            )}
+
+                            {/* Apple */}
+                            {isApple && (
+                                <div className="absolute inset-0 flex items-center justify-center z-20 transition-all duration-150">
+                                    <div className="w-[80%] h-[80%] bg-gradient-to-br from-red-400 to-red-600 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-bounce">
+                                        <div className="absolute top-1 right-1 w-2 h-2 bg-white/50 rounded-full blur-[1px]"></div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Bomb */}
+                            {isBomb && (
+                                <div className="absolute inset-0 flex items-center justify-center z-20 animate-pulse">
+                                    <Bomb size="90%" className="text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" fill="currentColor" />
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
-    );
+
+                {/* Controls & Action */ }
+    <div className="mt-6 z-20 w-full max-w-[360px] flex flex-col gap-4 pb-12 sm:pb-0">
+
+        <Button
+            onClick={handleCashOut}
+            disabled={phase !== 'PLAYING' || config.applesEaten === 0}
+            className={`
+            py-4 text-xl font-black uppercase tracking-wider transition-all duration-300
+            ${config.applesEaten > 0
+                    ? 'bg-gradient-to-r from-neon-green to-[#2db312] text-black shadow-[0_0_30px_rgba(57,255,20,0.4)] hover:scale-105 border-0 scale-105'
+                    : 'glass-panel text-gray-500 border-white/5'}
+            ${tensionLevel === 3 ? 'animate-pulse' : ''}
+          `}
+        >
+            {config.applesEaten > 0 ? (
+                <span className="flex items-center justify-center gap-2">
+                    <Zap className="w-6 h-6 fill-current" />
+                    SACAR R$ {(config.betAmount + config.potentialWin).toFixed(2)}
+                </span>
+            ) : (
+                "Pegue maçãs para sacar"
+            )}
+        </Button>
+
+        {/* Mobile Circular D-Pad - Redesigned & Lifted for iPhone */}
+        <div className="relative mx-auto sm:hidden w-56 h-56 bg-gradient-to-b from-[#111113]/90 to-black/95 rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-xl flex items-center justify-center mb-16 pb-[calc(env(safe-area-inset-bottom)+20px)] pointer-events-auto select-none touch-manipulation">
+
+            {/* Inner glowing ring structure */}
+            <div className="absolute inset-1 rounded-full border border-white/5 pointer-events-none"></div>
+
+            {/* UP */}
+            <button
+                className="absolute top-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-t-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
+                onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.UP); }}
+            >
+                <ChevronUp size={44} className="drop-shadow-lg pb-1" />
+            </button>
+
+            {/* DOWN */}
+            <button
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-b-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
+                onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.DOWN); }}
+            >
+                <ChevronDown size={44} className="drop-shadow-lg pt-1" />
+            </button>
+
+            {/* LEFT */}
+            <button
+                className="absolute left-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-l-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
+                onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.LEFT); }}
+            >
+                <ChevronLeft size={44} className="drop-shadow-lg pr-1" />
+            </button>
+
+            {/* RIGHT */}
+            <button
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-r-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
+                onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.RIGHT); }}
+            >
+                <ChevronRight size={44} className="drop-shadow-lg pl-1" />
+            </button>
+
+            {/* Center Core */}
+            <div className="w-16 h-16 bg-[#1a1a1d] rounded-full shadow-[inset_0_4px_15px_rgba(0,0,0,1),0_0_15px_rgba(0,0,0,0.5)] flex items-center justify-center relative z-0 border border-white/5 pointer-events-none">
+                <div className="w-5 h-5 bg-neon-green rounded-full shadow-[0_0_20px_rgba(57,255,20,0.8)] opacity-60"></div>
+            </div>
+        </div>
+
+        <p className="text-center text-gray-500 text-[10px] hidden sm:block uppercase tracking-widest mt-2 animate-pulse">
+            Dica: Use as setas do teclado ou deslize o dedo na tela
+        </p>
+
+    </div>
+            </div >
+            );
 };
