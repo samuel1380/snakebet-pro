@@ -783,13 +783,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
 
             {/* Game Board Container - SWIPE AREA */}
             <div
-                className="relative z-20 p-1 rounded-xl bg-gradient-to-b from-gray-800 to-black shadow-2xl"
+                className="relative z-20 p-1 rounded-xl bg-gradient-to-b from-gray-800 to-black shadow-2xl touch-none select-none"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >
                 <div
                     ref={gameAreaRef}
-                    className={`relative bg-black rounded-lg overflow-hidden transition-all duration-300 ${phase === 'CRASHED' ? 'border-2 border-red-500 shadow-[0_0_50px_rgba(220,38,38,0.4)]' : tensionLevel === 3 ? 'border-2 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.2)]' : 'border border-gray-800 shadow-inner'}`}
+                    className={`relative bg-black rounded-lg overflow-hidden transition-all duration-300 touch-none select-none ${phase === 'CRASHED' ? 'border-2 border-red-500 shadow-[0_0_50px_rgba(220,38,38,0.4)]' : tensionLevel === 3 ? 'border-2 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.2)]' : 'border border-gray-800 shadow-inner'}`}
                     style={{
                         width: 'min(90vw, 400px)',
                         height: 'min(90vw, 400px)',
@@ -1019,43 +1019,47 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
                     )}
                 </Button>
 
-                {/* Mobile Circular D-Pad */}
-                <div className="relative mx-auto sm:hidden w-48 h-48 bg-[#111113]/80 rounded-full border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-lg flex items-center justify-center p-2 mb-2 pointer-events-auto">
+                {/* Mobile Circular D-Pad - Redesigned & Lifted for iPhone */}
+                <div className="relative mx-auto sm:hidden w-56 h-56 bg-gradient-to-b from-[#111113]/90 to-black/95 rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-xl flex items-center justify-center mb-10 pb-[env(safe-area-inset-bottom)] pointer-events-auto select-none touch-manipulation">
+
+                    {/* Inner glowing ring structure */}
+                    <div className="absolute inset-1 rounded-full border border-white/5 pointer-events-none"></div>
+
                     {/* UP */}
                     <button
-                        className="absolute top-1 left-1/2 -translate-x-1/2 w-16 h-14 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-t-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        className="absolute top-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-t-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
                         onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.UP); }}
                     >
-                        <ChevronUp size={32} className="drop-shadow-md pb-2 text-gray-300" />
+                        <ChevronUp size={44} className="drop-shadow-lg pb-1" />
                     </button>
 
                     {/* DOWN */}
                     <button
-                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-16 h-14 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-b-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-20 h-16 bg-transparent active:bg-neon-green/30 rounded-b-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
                         onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.DOWN); }}
                     >
-                        <ChevronDown size={32} className="drop-shadow-md pt-2 text-gray-300" />
+                        <ChevronDown size={44} className="drop-shadow-lg pt-1" />
                     </button>
 
                     {/* LEFT */}
                     <button
-                        className="absolute left-1 top-1/2 -translate-y-1/2 w-14 h-16 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-l-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        className="absolute left-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-l-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
                         onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.LEFT); }}
                     >
-                        <ChevronLeft size={32} className="drop-shadow-md pr-2 text-gray-300" />
+                        <ChevronLeft size={44} className="drop-shadow-lg pr-1" />
                     </button>
 
                     {/* RIGHT */}
                     <button
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-14 h-16 bg-white/5 hover:bg-white/10 active:bg-neon-green/30 active:scale-95 rounded-r-[40px] flex items-center justify-center transition-all border border-white/5 active:border-neon-green/50 z-10 text-white shadow-inner"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-16 h-20 bg-transparent active:bg-neon-green/30 rounded-r-[50px] flex items-center justify-center transition-all z-10 text-gray-400 active:text-neon-green touch-manipulation focus:outline-none"
                         onPointerDown={(e) => { e.preventDefault(); handleDirection(Direction.RIGHT); }}
                     >
-                        <ChevronRight size={32} className="drop-shadow-md pl-2 text-gray-300" />
+                        <ChevronRight size={44} className="drop-shadow-lg pl-1" />
                     </button>
 
                     {/* Center Core */}
-                    <div className="w-16 h-16 bg-[#09090b] rounded-full shadow-[inset_0_4px_15px_rgba(0,0,0,0.8)] flex items-center justify-center relative z-0 border border-white/10">
-                        <div className="w-6 h-6 bg-neon-green/10 rounded-full shadow-[0_0_20px_rgba(57,255,20,0.4)] border border-neon-green/20"></div>
+                    <div className="w-16 h-16 bg-[#1a1a1d] rounded-full shadow-[inset_0_4px_15px_rgba(0,0,0,1),0_0_15px_rgba(0,0,0,0.5)] flex items-center justify-center relative z-0 border border-white/5 pointer-events-none">
+                        <div className="w-5 h-5 bg-neon-green rounded-full shadow-[0_0_20px_rgba(57,255,20,0.8)] opacity-60"></div>
                     </div>
                 </div>
 
