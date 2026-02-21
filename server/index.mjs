@@ -291,8 +291,14 @@ app.post('/api/game/start', async (req, res) => {
 
     const token = authHeader.split(' ')[1];
 
+    let decoded;
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch (e) {
+        return res.status(401).json({ error: 'Token inválido ou expirado. Faça login novamente.' });
+    }
+
+    try {
         const { betAmount } = req.body;
 
         if (!betAmount || betAmount <= 0) {

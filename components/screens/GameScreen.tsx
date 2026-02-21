@@ -171,7 +171,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ betAmount, difficulty, u
             initGameBoard();
         } catch (err: any) {
             console.error("Start Game Error", err);
-            alert(err.message || "Erro ao iniciar partida.");
+            alert(err?.error || err?.message || "Erro ao iniciar partida.");
             onCancelMatch();
         }
     };
