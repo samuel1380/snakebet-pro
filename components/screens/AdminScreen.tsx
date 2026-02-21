@@ -210,6 +210,11 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
     const depositsList = allTransactions.filter(t => t.type === 'DEPOSIT');
     const withdrawalsList = allTransactions.filter(t => t.type === 'WITHDRAW');
 
+    // Dashboard Calculations
+    const totalDepositsValue = depositsList.filter(d => d.status === 'COMPLETED').reduce((sum, d) => sum + d.amount, 0);
+    const totalWithdrawalsValue = withdrawalsList.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + w.amount, 0);
+    const netProfitValue = totalDepositsValue - totalWithdrawalsValue;
+
     const handleUpdateTransactionStatus = (username: string, transactionId: string, newStatus: 'COMPLETED' | 'REJECTED') => {
         const updatedUsers = users.map(u => {
             if (u.username === username) {
@@ -379,38 +384,35 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
 
                     {activeTab === 'dashboard' && (
                         <div className="space-y-6 relative z-10 animate-in fade-in zoom-in-95 duration-300">
-                            {/* KPI Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <StatCard
-                                    title="GGR Total"
-                                    value={`R$ ${totalDeposited.toFixed(2)}`}
+                                    title="Entradas (Depósitos)"
+                                    value={`R$ ${totalDepositsValue.toFixed(2)}`}
                                     icon={<Wallet className="text-emerald-500" />}
-                                    trend="+12.5%"
-                                    trendUp
+                                    trend="Reais"
                                     color="emerald"
                                 />
                                 <StatCard
-                                    title="Saldo Circulante"
-                                    value={`R$ ${totalBalance.toFixed(2)}`}
-                                    icon={<CreditCard className="text-blue-500" />}
-                                    trend="+5.2%"
-                                    trendUp
-                                    color="blue"
+                                    title="Saídas (Saques)"
+                                    value={`R$ ${totalWithdrawalsValue.toFixed(2)}`}
+                                    icon={<CreditCard className="text-red-500" />}
+                                    trend="Pagos"
+                                    color="red"
                                 />
                                 <StatCard
-                                    title="Jogadores Ativos"
-                                    value={totalUsers.toString()}
+                                    title="Lucro Líquido Real"
+                                    value={`R$ ${netProfitValue.toFixed(2)}`}
+                                    icon={<DollarSign className={netProfitValue >= 0 ? "text-emerald-400" : "text-red-500"} />}
+                                    trend="Na Conta"
+                                    trendUp={netProfitValue >= 0}
+                                    color={netProfitValue >= 0 ? "emerald" : "red"}
+                                />
+                                <StatCard
+                                    title="Jogadores Cadastrados"
+                                    value={users.length.toString()}
                                     icon={<Users className="text-purple-500" />}
-                                    trend="+8"
-                                    trendUp
+                                    trend="Na Plataforma"
                                     color="purple"
-                                />
-                                <StatCard
-                                    title="Membros VIP"
-                                    value={totalVips.toString()}
-                                    icon={<Crown className="text-amber-500" />}
-                                    trend="Estável"
-                                    color="amber"
                                 />
                             </div>
 
@@ -822,6 +824,25 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ onLogout }) => {
                                                 />
                                             </div>
                                             <p className="text-[10px] text-gray-500 mt-1.5 ml-1">Valor mínimo para solicitações de saque.</p>
+                                        </div>
+
+                                        {/* ROLLOVER MULTIPLIER (NEW RULE) */}
+                                        <div className="pt-4 border-t border-white/5 mt-4">
+                                            <label className="block text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                <Shield size={14} /> Regra de Rollover
+                                            </label>
+                                            <div className="relative group">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-white transition-colors">x</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    value={config.rollover_multiplier || 1}
+                                                    onChange={(e) => setConfig({ ...config, rollover_multiplier: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full bg-[#09090b] border border-emerald-500/20 rounded-xl py-3 pl-12 pr-4 text-white font-mono focus:outline-none focus:border-emerald-500 focus:bg-[#09090b] transition-all"
+                                                />
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-1.5 ml-1">Para sacar, o usuário deve apostar no mínimo (Depósito * Rollover).</p>
                                         </div>
 
                                         {/* Auto Withdraw Section */}

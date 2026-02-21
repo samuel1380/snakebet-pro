@@ -319,8 +319,8 @@ app.post('/api/game/start', async (req, res) => {
         // Generate Game ID
         const gameId = `GAME-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-        // Debit Balance
-        await query('UPDATE users SET balance = balance - ? WHERE id = ?', [betAmount, decoded.id]);
+        // Debit Balance & Increment Total Wagered (For rollover)
+        await query('UPDATE users SET balance = balance - ?, totalWagered = COALESCE(totalWagered, 0) + ? WHERE id = ?', [betAmount, betAmount, decoded.id]);
 
         // Create Game Session
         await query(
@@ -354,6 +354,7 @@ app.post('/api/game/end', async (req, res) => {
 
         if (!gameId) return res.status(400).json({ error: 'ID do jogo não fornecido.' });
         if (multiplier < 0) return res.status(400).json({ error: 'Multiplicador inválido.' });
+        if (multiplier > 1000) return res.status(400).json({ error: 'Multiplicador excede limite máximo permitido por segurança.' });
 
         // Get Game Session
         const sessions = await query('SELECT * FROM game_sessions WHERE id = ? AND user_id = ?', [gameId, decoded.id]);
@@ -935,17 +936,32 @@ app.post('/api/withdraw', async (req, res) => {
         const { amount, pixKey, pixKeyType } = req.body;
 
         // Check Balance
-        const user = (await query('SELECT balance FROM users WHERE id = ?', [decoded.id]))[0];
+        const user = (await query('SELECT balance, totalDeposited, totalWagered FROM users WHERE id = ?', [decoded.id]))[0];
         if (parseFloat(user.balance) < amount) {
             return res.status(400).json({ error: 'Saldo insuficiente.' });
         }
 
-        // Get PagViva Config
-        const settings = await query('SELECT setting_value FROM settings WHERE setting_key = "pagViva"');
+        // Get Settings & PagViva Config
+        const settingsRows = await query('SELECT setting_key, setting_value FROM settings');
+        const settingsConfig = {};
+        settingsRows.forEach(r => settingsConfig[r.setting_key] = r.setting_value);
+
+        // Anti-Fraud Rollover Check
+        const rolloverX = parseFloat(settingsConfig.rollover_multiplier || 1);
+        const requiredWager = (parseFloat(user.totalDeposited) || 0) * rolloverX;
+        const currentWager = parseFloat(user.totalWagered) || 0;
+
+        if (currentWager < requiredWager) {
+            return res.status(400).json({
+                error: `Regra de Rollover (${rolloverX}x): Você precisa movimentar mais R$ ${(requiredWager - currentWager).toFixed(2)} em apostas para liberar saques.`
+            });
+        }
+
+        // Parse PagViva Config
         let pagVivaConfig = null;
-        if (settings.length > 0) {
+        if (settingsConfig.pagViva) {
             try {
-                pagVivaConfig = JSON.parse(settings[0].setting_value);
+                pagVivaConfig = JSON.parse(settingsConfig.pagViva);
             } catch (e) {
                 console.error("Error parsing pagViva settings", e);
             }
